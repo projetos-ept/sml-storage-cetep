@@ -5,6 +5,7 @@ const projetoSelect = document.getElementById('projeto');
 const tag1Input = document.getElementById('tag1');
 const tag2Input = document.getElementById('tag2');
 const mesInput = document.getElementById('mes');
+const limit10Checkbox = document.getElementById('limit10');
 const apiKeyInput = document.getElementById('apiKey');
 const btnSearch = document.getElementById('btnSearch');
 const btnClear = document.getElementById('btnClear');
@@ -36,6 +37,12 @@ window.addEventListener('load', () => {
   if (savedApiKey) {
     apiKeyInput.value = savedApiKey;
   }
+
+  // Set current month as default
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, '0');
+  mesInput.value = `${year}-${month}`;
 });
 
 // Save API key to localStorage when changed
@@ -67,6 +74,11 @@ async function search() {
       tag2: tag2Input.value.trim() || undefined,
       mes: mesInput.value || undefined,
     };
+
+    // Add limit if checkbox is checked
+    if (limit10Checkbox.checked) {
+      body.limit = 10;
+    }
 
     // Remove undefined fields
     Object.keys(body).forEach(key => body[key] === undefined && delete body[key]);
@@ -223,7 +235,13 @@ function clearFilters() {
   projetoSelect.value = '';
   tag1Input.value = '';
   tag2Input.value = '';
-  mesInput.value = '';
+  limit10Checkbox.checked = true;
+
+  // Reset to current month
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, '0');
+  mesInput.value = `${year}-${month}`;
 
   filesList.innerHTML = '';
   filesTable.style.display = 'none';

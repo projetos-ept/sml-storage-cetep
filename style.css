@@ -113,6 +113,19 @@ main {
   box-shadow: 0 0 0 3px rgba(0, 102, 204, 0.1);
 }
 
+#projeto {
+  background-color: #e3f2fd;
+  cursor: default;
+  font-weight: 600;
+  color: var(--primary-color);
+}
+
+#projeto:disabled {
+  background-color: #e3f2fd;
+  color: var(--primary-color);
+  border-color: var(--primary-color);
+}
+
 /* API Key Section */
 .api-key-section {
   background-color: #f0f7ff;

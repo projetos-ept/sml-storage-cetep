@@ -51,6 +51,7 @@
           <div class="filter-group full-width">
             <button id="btnSearch" class="btn btn-primary">🔎 Buscar</button>
             <button id="btnClear" class="btn btn-secondary">↺ Limpar Filtros</button>
+            <button id="btnDownloadZip" class="btn btn-success" style="display: none;">📦 Baixar Selecionados (.zip)</button>
           </div>
         </div>
 
@@ -79,9 +80,15 @@
           <p>📭 Nenhum arquivo encontrado com os filtros selecionados</p>
         </div>
 
+        <div id="tableControls" class="table-controls" style="display: none; margin-bottom: 15px;">
+          <button id="btnSelectNone" class="btn btn-secondary btn-small">☐ Nenhum</button>
+          <button id="btnSelectAll" class="btn btn-secondary btn-small">☑ Todos</button>
+        </div>
+
         <table id="filesTable" class="files-table" style="display: none;">
           <thead>
             <tr>
+              <th style="width: 40px;"><input type="checkbox" id="selectAllCheckbox" class="select-all-checkbox"></th>
               <th>Arquivo</th>
               <th>Tamanho</th>
               <th>Tipo</th>
@@ -101,12 +108,22 @@
     </footer>
   </div>
 
-  <!-- Modal de Detalhes -->
-  <div id="modal" class="modal" style="display: none;">
+  <!-- Modal de Download -->
+  <div id="downloadModal" class="modal" style="display: none;">
     <div class="modal-content">
-      <span class="modal-close">&times;</span>
-      <h2 id="modalTitle">Detalhes do Arquivo</h2>
-      <div id="modalBody"></div>
+      <span class="modal-close" onclick="closeDownloadModal()">&times;</span>
+      <h2>📦 Preparar Download</h2>
+      <div id="downloadModalBody">
+        <p>Você está prestes a baixar <strong id="downloadCount">0</strong> arquivo(s) em um arquivo ZIP.</p>
+        <div style="margin: 20px 0;">
+          <label for="zipFileName">Nome do arquivo ZIP:</label>
+          <input type="text" id="zipFileName" placeholder="Ex: arquivos_selecionados" value="arquivos_selecionados">
+        </div>
+        <div style="display: flex; gap: 10px;">
+          <button onclick="executeZipDownload()" class="btn btn-primary">✓ Confirmar Download</button>
+          <button onclick="closeDownloadModal()" class="btn btn-secondary">✗ Cancelar</button>
+        </div>
+      </div>
     </div>
   </div>
 

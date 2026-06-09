@@ -17,18 +17,24 @@ const filesTable = document.getElementById('filesTable');
 const filesList = document.getElementById('filesList');
 const resultCount = document.getElementById('resultCount');
 
-const modal = document.getElementById('modal');
-const modalClose = document.querySelector('.modal-close');
-const modalBody = document.getElementById('modalBody');
+const downloadModal = document.getElementById('downloadModal');
+const tableControls = document.getElementById('tableControls');
+const btnDownloadZip = document.getElementById('btnDownloadZip');
+const btnSelectNone = document.getElementById('btnSelectNone');
+const btnSelectAll = document.getElementById('btnSelectAll');
+const selectAllCheckbox = document.getElementById('selectAllCheckbox');
 
 let currentUploads = [];
 
 // Event Listeners
 btnSearch.addEventListener('click', search);
 btnClear.addEventListener('click', clearFilters);
-modalClose.addEventListener('click', closeModal);
-modal.addEventListener('click', (e) => {
-  if (e.target === modal) closeModal();
+btnDownloadZip.addEventListener('click', openDownloadModal);
+btnSelectNone.addEventListener('click', selectNoneFiles);
+btnSelectAll.addEventListener('click', selectAllFiles);
+selectAllCheckbox.addEventListener('change', toggleSelectAll);
+downloadModal.addEventListener('click', (e) => {
+  if (e.target === downloadModal) closeDownloadModal();
 });
 
 // Load API key from localStorage on page load
@@ -116,6 +122,8 @@ async function search() {
 function displayResults() {
   if (currentUploads.length === 0) {
     filesTable.style.display = 'none';
+    tableControls.style.display = 'none';
+    btnDownloadZip.style.display = 'none';
     noResultsDiv.style.display = 'block';
     resultCount.textContent = '0 arquivos encontrados';
     return;
@@ -131,10 +139,16 @@ function displayResults() {
 
   noResultsDiv.style.display = 'none';
   filesTable.style.display = 'table';
+  tableControls.style.display = 'flex';
+  btnDownloadZip.style.display = 'inline-flex';
+  selectAllCheckbox.checked = false;
 }
 
 function createTableRow(upload) {
   const row = document.createElement('tr');
+  row.dataset.uploadId = upload.id;
+  row.dataset.uploadUrl = upload.url;
+  row.dataset.fileName = upload.filename;
 
   const fileName = upload.filename || 'N/A';
   const fileSize = formatFileSize(upload.size || 0);
@@ -148,6 +162,7 @@ function createTableRow(upload) {
   if (tags.tag3) tagsHtml += `<span class="tag">${escapeHtml(tags.tag3)}</span>`;
 
   row.innerHTML = `
+    <td><input type="checkbox" class="row-checkbox" data-file-id="${upload.id}"></td>
     <td><span class="file-name">${escapeHtml(fileName)}</span></td>
     <td><span class="file-size">${fileSize}</span></td>
     <td><span class="file-type">${fileFormat}</span></td>
@@ -156,10 +171,14 @@ function createTableRow(upload) {
     <td>
       <div class="actions-cell">
         <button class="btn btn-download btn-small" onclick="downloadFile('${escapeHtml(upload.url)}', '${escapeHtml(fileName)}')">⬇️ Download</button>
-        <button class="btn btn-info btn-small" onclick="showDetails('${escapeHtml(JSON.stringify(upload).replace(/'/g, '&#39;'))}')">ℹ️ Detalhes</button>
+        <button class="btn btn-info btn-small" onclick="copyToClipboard('${escapeHtml(upload.url)}')">🔗 Copiar Link</button>
       </div>
     </td>
   `;
+
+  // Add checkbox change listener
+  const checkbox = row.querySelector('.row-checkbox');
+  checkbox.addEventListener('change', updateSelectAllCheckbox);
 
   return row;
 }
@@ -173,62 +192,14 @@ function downloadFile(url, fileName) {
   document.body.removeChild(a);
 }
 
-function showDetails(uploadJson) {
-  const upload = JSON.parse(uploadJson);
-
-  const html = `
-    <div class="modal-detail">
-      <label>Arquivo</label>
-      <p>${escapeHtml(upload.filename)}</p>
-    </div>
-
-    <div class="modal-detail">
-      <label>Tamanho</label>
-      <p>${formatFileSize(upload.size)}</p>
-    </div>
-
-    <div class="modal-detail">
-      <label>Tipo</label>
-      <p>${upload.format.toUpperCase()}</p>
-    </div>
-
-    <div class="modal-detail">
-      <label>Data de Upload</label>
-      <p>${formatDate(upload.uploadedAtISO)}</p>
-    </div>
-
-    <div class="modal-detail">
-      <label>Caminho no Storage</label>
-      <p><code style="background: #f0f0f0; padding: 5px; border-radius: 3px;">${escapeHtml(upload.path)}</code></p>
-    </div>
-
-    <div class="modal-detail">
-      <label>URL Pública</label>
-      <p><a href="${escapeHtml(upload.url)}" target="_blank">${escapeHtml(upload.url)}</a></p>
-    </div>
-
-    <div class="modal-detail">
-      <label>Tags</label>
-      <p>
-        ${upload.tags.tag1 ? `<strong>Tag 1:</strong> ${escapeHtml(upload.tags.tag1)}<br>` : ''}
-        ${upload.tags.tag2 ? `<strong>Tag 2:</strong> ${escapeHtml(upload.tags.tag2)}<br>` : ''}
-        ${upload.tags.tag3 ? `<strong>Tag 3:</strong> ${escapeHtml(upload.tags.tag3)}<br>` : ''}
-        ${!upload.tags.tag1 && !upload.tags.tag2 && !upload.tags.tag3 ? '<em style="color: #999;">Sem tags</em>' : ''}
-      </p>
-    </div>
-
-    <div class="modal-detail">
-      <label>ID do Documento</label>
-      <p><code style="background: #f0f0f0; padding: 5px; border-radius: 3px;">${escapeHtml(upload.id)}</code></p>
-    </div>
-  `;
-
-  modalBody.innerHTML = html;
-  modal.classList.add('show');
-}
-
-function closeModal() {
-  modal.classList.remove('show');
+function copyToClipboard(url) {
+  navigator.clipboard.writeText(url).then(() => {
+    showError('✓ Link copiado para a área de transferência!');
+    setTimeout(hideError, 2000);
+  }).catch(err => {
+    showError('❌ Erro ao copiar link');
+    console.error('Erro:', err);
+  });
 }
 
 function clearFilters() {
@@ -245,6 +216,8 @@ function clearFilters() {
 
   filesList.innerHTML = '';
   filesTable.style.display = 'none';
+  tableControls.style.display = 'none';
+  btnDownloadZip.style.display = 'none';
   noResultsDiv.style.display = 'none';
   errorDiv.style.display = 'none';
   resultCount.textContent = '0 arquivos encontrados';
@@ -296,4 +269,85 @@ function escapeHtml(text) {
   const div = document.createElement('div');
   div.textContent = text;
   return div.innerHTML;
+}
+
+function getSelectedFiles() {
+  const checkboxes = document.querySelectorAll('.row-checkbox:checked');
+  const selected = [];
+  checkboxes.forEach(checkbox => {
+    const fileId = checkbox.dataset.fileId;
+    const upload = currentUploads.find(u => u.id === fileId);
+    if (upload) {
+      selected.push(upload);
+    }
+  });
+  return selected;
+}
+
+function selectAllFiles() {
+  document.querySelectorAll('.row-checkbox').forEach(checkbox => {
+    checkbox.checked = true;
+  });
+  selectAllCheckbox.checked = true;
+}
+
+function selectNoneFiles() {
+  document.querySelectorAll('.row-checkbox').forEach(checkbox => {
+    checkbox.checked = false;
+  });
+  selectAllCheckbox.checked = false;
+}
+
+function toggleSelectAll() {
+  const checked = selectAllCheckbox.checked;
+  document.querySelectorAll('.row-checkbox').forEach(checkbox => {
+    checkbox.checked = checked;
+  });
+}
+
+function updateSelectAllCheckbox() {
+  const total = document.querySelectorAll('.row-checkbox').length;
+  const checked = document.querySelectorAll('.row-checkbox:checked').length;
+  selectAllCheckbox.checked = total > 0 && total === checked;
+}
+
+function openDownloadModal() {
+  const selected = getSelectedFiles();
+  if (selected.length === 0) {
+    showError('⚠️ Selecione pelo menos um arquivo para fazer download');
+    return;
+  }
+
+  document.getElementById('downloadCount').textContent = selected.length;
+  downloadModal.classList.add('show');
+}
+
+function closeDownloadModal() {
+  downloadModal.classList.remove('show');
+}
+
+function executeZipDownload() {
+  const selected = getSelectedFiles();
+  if (selected.length === 0) {
+    showError('⚠️ Nenhum arquivo selecionado');
+    return;
+  }
+
+  const zipFileName = document.getElementById('zipFileName').value.trim() || 'arquivos_selecionados';
+  closeDownloadModal();
+  showLoading();
+
+  // Simulate zip download - in production, this would call a backend API
+  setTimeout(() => {
+    hideLoading();
+    showError('✓ Download iniciado! (Funcionalidade de ZIP será implementada no backend)');
+    setTimeout(hideError, 3000);
+
+    // For now, download files individually
+    selected.forEach((upload, index) => {
+      setTimeout(() => {
+        downloadFile(upload.url, upload.filename);
+      }, index * 200);
+    });
+  }, 500);
 }

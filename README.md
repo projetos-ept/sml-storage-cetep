@@ -4,17 +4,33 @@ Interface web para visualizar, filtrar e gerenciar arquivos armazenados na **SML
 
 ## 🚀 Funcionalidades
 
-✅ **Listar arquivos** do bucket com filtros avançados
+✅ **Listar arquivos** com filtros avançados
 ✅ **Filtrar por:**
   - Projeto (obrigatório)
-  - Tag 1 - tipo de arquivo (ex: hemograma, urgente)
-  - Tag 2 - categoria (ex: turma-a, 2026)
+  - Tag 1 - Estudante (ex: Lucas Batista, João Silva)
+  - Tag 2 - Turma (ex: 3TACM1)
+  - Tag 3 - E-mail do responsável (ex: professor@escola.com)
   - Mês (formato YYYY-MM)
+  - Últimos 10 arquivos (marcado por padrão)
 
-✅ **Visualizar detalhes** de cada arquivo
-✅ **Download direto** dos arquivos
+✅ **Ordenar resultados** por:
+  - Data de Upload (↑↓)
+  - Estudante (↑↓)
+  - Turma (↑↓)
+  - E-mail (↑↓)
+
+✅ **Seleção em lote:**
+  - Checkboxes para cada arquivo
+  - Botões "Selecionar Nenhum" e "Selecionar Todos"
+  - Checkbox no cabeçalho para selecionar/desselecionar tudo
+
+✅ **Download:**
+  - Download individual de arquivos
+  - Preparação para download em ZIP de múltiplos arquivos
+  - Copiar link do arquivo para clipboard
+
 ✅ **Interface responsiva** e moderna
-✅ **API Key armazenada localmente** no navegador
+✅ **API Key armazenada localmente** no navegador (localStorage)
 
 ## 🌐 Deploy em GitHub Pages
 
@@ -48,16 +64,26 @@ Abra https://projetos-ept.github.io/sml-storage-cetep/ no navegador.
 1. **Cole sua API Key** no campo "🔐 API Key"
 2. **Selecione um Projeto** (obrigatório)
 3. **(Opcional) Aplique filtros adicionais:**
-   - Tag 1: tipo/classificação do arquivo
-   - Tag 2: categoria/turma
+   - Tag 1 (Estudante): nome do estudante
+   - Tag 2 (Turma): turma (ex: 3TACM1)
+   - Tag 3 (E-mail): e-mail do responsável
    - Mês: YYYY-MM (ex: 2026-06)
+   - ☑ Últimos 10 arquivos: (marcado por padrão)
 4. Clique em **🔎 Buscar**
 
-### 4. Visualizar Resultados
+### 4. Visualizar e Ordenar Resultados
 
-- **Tabela de arquivos** com: nome, tamanho, tipo, data, tags e ações
+- **Tabela de arquivos** com: nome, tamanho, tipo, data, estudante, turma, e-mail e ações
+- **Ordenar**: Clique nas setas (⇅) no cabeçalho das colunas para ordenar
 - **Download**: Clique em "⬇️ Download" para baixar o arquivo
-- **Detalhes**: Clique em "ℹ️ Detalhes" para ver informações completas
+- **Copiar Link**: Clique em "🔗 Copiar Link" para copiar a URL do arquivo
+
+### 5. Seleção em Lote
+
+1. **Selecionar arquivos** com os checkboxes individuais ou:
+   - Clique em "☑ Todos" para selecionar todos os arquivos
+   - Clique em "☐ Nenhum" para desselecionar todos
+2. **Baixar Selecionados**: Clique em "📦 Baixar Selecionados (.zip)" para preparar o download em lote
 
 ## 🔐 Segurança
 
@@ -88,37 +114,53 @@ Endpoint: `POST /listUploads`
 ```json
 {
   "projeto": "cetep",
-  "tag1": "hemograma",
-  "tag2": "urgente",
-  "mes": "2026-06"
+  "tag1": "Lucas Batista",
+  "tag2": "3TACM1",
+  "tag3": "professor@escola.com",
+  "mes": "2026-06",
+  "limit": 10
 }
 ```
+
+**Parâmetros:**
+- `projeto` (obrigatório): nome do projeto
+- `tag1` (opcional): nome do estudante
+- `tag2` (opcional): turma
+- `tag3` (opcional): e-mail do responsável
+- `mes` (opcional): mês no formato YYYY-MM
+- `limit` (opcional): limitar número de resultados (ex: 10)
 
 ### Response
 
 ```json
 {
   "success": true,
-  "count": 2,
+  "count": 1,
   "uploads": [
     {
       "id": "aB3xK9mNpQrS7tUv",
-      "filename": "laudo-hemograma.pdf",
-      "path": "cetep/2026-06/1780857941461_laudo-hemograma.pdf",
+      "filename": "09062026-3TACM1-Lucas-Batista.pdf",
+      "path": "cetep/2026-06/1780857941461_09062026-3TACM1-Lucas-Batista.pdf",
       "url": "https://storage.googleapis.com/...",
       "size": 204800,
       "format": "pdf",
       "uploadedAt": "2026-06-07T15:47:00.000Z",
       "uploadedAtISO": "2026-06-07T15:47:00.000Z",
       "tags": {
-        "tag1": "hemograma",
-        "tag2": "urgente",
-        "tag3": null
+        "tag1": "Lucas Batista",
+        "tag2": "3TACM1",
+        "tag3": "professor@escola.com"
       }
     }
   ]
 }
 ```
+
+**Estrutura do arquivo:**
+- `filename`: formato `DDMMAAAA-TURMA-NOMES.pdf` (ex: 09062026-3TACM1-Lucas-Batista.pdf)
+- `tags.tag1`: nome(s) do(s) estudante(s)
+- `tags.tag2`: turma
+- `tags.tag3`: e-mail do responsável
 
 Para mais detalhes, veja a documentação da [SML Storage API](https://github.com/projetos-ept/sml-storage-api).
 

@@ -88,6 +88,7 @@ main {
   grid-column: 1 / -1;
   flex-direction: row;
   gap: 10px;
+  flex-wrap: wrap;
 }
 
 .filter-group label {
@@ -220,6 +221,18 @@ main {
   transform: translateY(-2px);
 }
 
+.btn-success {
+  background-color: var(--success-color);
+  color: white;
+  flex: 0 1 auto;
+}
+
+.btn-success:hover {
+  background-color: #218838;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(40, 167, 69, 0.3);
+}
+
 .btn-small {
   padding: 6px 12px;
   font-size: 0.85em;
@@ -243,6 +256,28 @@ main {
 
 .btn-info:hover {
   background-color: #138496;
+}
+
+/* Table Controls */
+.table-controls {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 15px;
+}
+
+/* Checkbox Styles */
+.row-checkbox {
+  width: 18px;
+  height: 18px;
+  cursor: pointer;
+  accent-color: var(--primary-color);
+}
+
+.select-all-checkbox {
+  width: 18px;
+  height: 18px;
+  cursor: pointer;
+  accent-color: var(--primary-color);
 }
 
 /* Results Section */
@@ -340,6 +375,40 @@ main {
   color: var(--text-color);
 }
 
+.files-table th.sortable {
+  cursor: pointer;
+  user-select: none;
+  transition: background-color 0.2s;
+}
+
+.files-table th.sortable:hover {
+  background-color: #e8e8e8;
+}
+
+.sort-icon {
+  margin-left: 5px;
+  opacity: 0.5;
+  transition: opacity 0.2s;
+}
+
+.files-table th.sortable:hover .sort-icon {
+  opacity: 1;
+}
+
+.files-table th.sortable.asc .sort-icon::after {
+  content: '↑';
+}
+
+.files-table th.sortable.desc .sort-icon::after {
+  content: '↓';
+}
+
+.files-table th.sortable.asc .sort-icon,
+.files-table th.sortable.desc .sort-icon {
+  opacity: 1;
+  color: var(--primary-color);
+}
+
 .files-table td {
   padding: 15px;
   border-bottom: 1px solid var(--border-color);
@@ -392,6 +461,13 @@ main {
   font-weight: 500;
 }
 
+.tag-cell {
+  font-size: 0.9em;
+  color: var(--text-color);
+  word-break: break-word;
+  max-width: 200px;
+}
+
 .actions-cell {
   display: flex;
   gap: 8px;
@@ -400,7 +476,7 @@ main {
 
 /* Modal */
 .modal {
-  display: none;
+  display: none !important;
   position: fixed;
   top: 0;
   left: 0;
@@ -413,7 +489,7 @@ main {
 }
 
 .modal.show {
-  display: flex;
+  display: flex !important;
 }
 
 .modal-content {
@@ -445,6 +521,19 @@ main {
 .modal-content h2 {
   margin-bottom: 20px;
   color: var(--primary-color);
+}
+
+#downloadModal .modal-content input {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  font-size: 1em;
+  margin-bottom: 15px;
+}
+
+#downloadModal .modal-content p {
+  margin-bottom: 15px;
 }
 
 .modal-detail {

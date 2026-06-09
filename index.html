@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SML Storage CETEP - Visualizador de Arquivos</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>📁 SML Storage CETEP</h1>
+      <p>Visualizar e gerenciar arquivos enviados</p>
+    </header>
+
+    <main>
+      <!-- Seção de Filtros -->
+      <section class="filters-section">
+        <h2>🔍 Filtros</h2>
+
+        <div class="filter-grid">
+          <div class="filter-group">
+            <label for="projeto">Projeto</label>
+            <select id="projeto">
+              <option value="">Selecione um projeto...</option>
+              <option value="cetep">CETEP</option>
+              <option value="ghrepo">GHRepo</option>
+              <option value="smartlab">SmartLab</option>
+              <option value="teste">Teste</option>
+            </select>
+          </div>
+
+          <div class="filter-group">
+            <label for="tag1">Tag 1 (Tipo)</label>
+            <input type="text" id="tag1" placeholder="Ex: hemograma, urgente">
+          </div>
+
+          <div class="filter-group">
+            <label for="tag2">Tag 2 (Categoria)</label>
+            <input type="text" id="tag2" placeholder="Ex: turma-a, 2026">
+          </div>
+
+          <div class="filter-group">
+            <label for="mes">Mês</label>
+            <input type="month" id="mes">
+          </div>
+
+          <div class="filter-group full-width">
+            <button id="btnSearch" class="btn btn-primary">🔎 Buscar</button>
+            <button id="btnClear" class="btn btn-secondary">↺ Limpar Filtros</button>
+          </div>
+        </div>
+
+        <div id="apiKeySection" class="api-key-section">
+          <label for="apiKey">🔐 API Key (obrigatória)</label>
+          <input type="password" id="apiKey" placeholder="Cole sua chave de API aqui">
+          <small>Sua chave é usada apenas localmente no navegador</small>
+        </div>
+      </section>
+
+      <!-- Seção de Resultados -->
+      <section class="results-section">
+        <div class="results-header">
+          <h2>📋 Resultados</h2>
+          <div id="resultCount" class="result-count">0 arquivos encontrados</div>
+        </div>
+
+        <div id="loading" class="loading" style="display: none;">
+          <div class="spinner"></div>
+          <p>Carregando arquivos...</p>
+        </div>
+
+        <div id="error" class="error-message" style="display: none;"></div>
+
+        <div id="noResults" class="no-results" style="display: none;">
+          <p>📭 Nenhum arquivo encontrado com os filtros selecionados</p>
+        </div>
+
+        <table id="filesTable" class="files-table" style="display: none;">
+          <thead>
+            <tr>
+              <th>Arquivo</th>
+              <th>Tamanho</th>
+              <th>Tipo</th>
+              <th>Data de Upload</th>
+              <th>Tags</th>
+              <th>Ações</th>
+            </tr>
+          </thead>
+          <tbody id="filesList">
+          </tbody>
+        </table>
+      </section>
+    </main>
+
+    <footer>
+      <p>© 2026 SML Storage API • <a href="https://github.com/projetos-ept/sml-storage-api" target="_blank">GitHub</a></p>
+    </footer>
+  </div>
+
+  <!-- Modal de Detalhes -->
+  <div id="modal" class="modal" style="display: none;">
+    <div class="modal-content">
+      <span class="modal-close">&times;</span>
+      <h2 id="modalTitle">Detalhes do Arquivo</h2>
+      <div id="modalBody"></div>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>

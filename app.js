@@ -355,12 +355,7 @@ function getSelectedFiles() {
 // ACTIONS
 // =====================
 function downloadFile(url, fileName) {
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = fileName;
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
+  window.open(url, '_blank');
 }
 
 function copyToClipboard(url) {

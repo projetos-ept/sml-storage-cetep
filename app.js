@@ -451,21 +451,16 @@ function executePrint() {
 
   closePrintModal();
 
-  // Build a page with all PDFs embedded, one per page, then print
+  // Create print window with PDFs as iframes
   const printWindow = window.open('', '_blank');
-  let embedsHtml = '';
+  let iframesHtml = '';
 
   selected.forEach((upload, index) => {
-    const isLast = index === selected.length - 1;
-    embedsHtml += `
-      <div class="pdf-page" style="${isLast ? '' : 'page-break-after: always;'}">
-        <embed
-          src="${escapeHtml(upload.url)}#toolbar=0&navpanes=0&scrollbar=0&view=FitH"
-          type="application/pdf"
-          width="100%"
-          height="100%"
-        >
-      </div>
+    iframesHtml += `
+      <iframe
+        src="${escapeHtml(upload.url)}#toolbar=0&navpanes=0"
+        style="width:100%; height:100vh; border:none; display:block; page-break-after:always;"
+      ></iframe>
     `;
   });
 
@@ -474,49 +469,47 @@ function executePrint() {
     <html lang="pt-BR">
     <head>
       <meta charset="UTF-8">
-      <title>Impressão em Lote (${selected.length} arquivo(s))</title>
+      <title>Impressão em Lote - ${selected.length} arquivo(s)</title>
       <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        html, body { width: 100%; height: 100%; }
-        .pdf-page {
-          width: 100vw;
-          height: 100vh;
+        * {
+          margin: 0;
+          padding: 0;
+          box-sizing: border-box;
         }
-        .pdf-page embed {
-          display: block;
+        html, body {
           width: 100%;
           height: 100%;
-          border: none;
+          overflow: hidden;
+        }
+        iframe {
+          display: block;
+          width: 100vw !important;
+          height: 100vh !important;
+          border: none !important;
+          margin: 0 !important;
+          padding: 0 !important;
         }
         @media print {
-          .pdf-page {
-            width: 100%;
-            height: 100vh;
+          iframe {
+            width: 100% !important;
+            height: 100% !important;
+            page-break-after: always;
+            page-break-inside: avoid;
+          }
+          body {
+            margin: 0;
+            padding: 0;
           }
         }
       </style>
     </head>
     <body>
-      ${embedsHtml}
+      ${iframesHtml}
       <script>
-        // Wait for embeds to load then print
-        let loaded = 0;
-        const total = ${selected.length};
-        const embeds = document.querySelectorAll('embed');
-
-        function tryPrint() {
-          loaded++;
-          if (loaded >= total) {
-            setTimeout(() => window.print(), 500);
-          }
-        }
-
-        embeds.forEach(embed => {
-          embed.addEventListener('load', tryPrint);
-          // Fallback: start print after 3s regardless
-        });
-
-        setTimeout(() => window.print(), 3000);
+        // Auto-print after 2 seconds
+        setTimeout(() => {
+          window.print();
+        }, 2000);
       <\/script>
     </body>
     </html>

@@ -1,157 +1,253 @@
 <!DOCTYPE html>
-<html lang="pt-BR">
+<html lang="pt-BR" data-theme="light">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>SML Storage CETEP - Visualizador de Arquivos</title>
+  <title>SML Storage CETEP</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css">
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
-  <div class="container">
-    <header>
-      <h1>📁 SML Storage CETEP</h1>
-      <p>Visualizar e gerenciar arquivos enviados</p>
-    </header>
 
-    <main>
-      <!-- Seção de Filtros -->
-      <section class="filters-section">
-        <h2>🔍 Filtros</h2>
+  <div class="wrapper">
 
-        <div class="filter-grid">
-          <div class="filter-group">
-            <label for="projeto">Projeto</label>
-            <select id="projeto">
-              <option value="cetep" selected>Fotos Diário</option>
-              <option value="mkd-pdf">Pandoc</option>
-            </select>
+    <!-- SIDEBAR -->
+    <aside class="sidebar" id="sidebar">
+      <div class="sidebar-header">
+        <div class="d-flex align-items-center gap-2">
+          <div class="brand-icon"><i class="bi bi-folder2-open"></i></div>
+          <span class="brand-title">SML Storage</span>
+        </div>
+        <button class="btn-icon d-md-none" id="btnCloseSidebar">
+          <i class="bi bi-x-lg"></i>
+        </button>
+      </div>
+
+      <div class="sidebar-body">
+        <p class="sidebar-section-label">FILTROS DE BUSCA</p>
+
+        <div class="field-group">
+          <label>Projeto <span class="text-danger">*</span></label>
+          <select id="projeto">
+            <option value="cetep" selected>Fotos Diário</option>
+            <option value="mkd-pdf">Pandoc</option>
+          </select>
+        </div>
+
+        <div class="field-group">
+          <label>Estudante (Tag 1)</label>
+          <input type="text" id="tag1" placeholder="Ex: Lucas Batista">
+        </div>
+
+        <div class="field-group">
+          <label>Turma (Tag 2)</label>
+          <input type="text" id="tag2" placeholder="Ex: 3TACM1">
+        </div>
+
+        <div class="field-group">
+          <label>E-mail (Tag 3)</label>
+          <input type="text" id="tag3" placeholder="Ex: professor@escola.com">
+        </div>
+
+        <div class="field-group">
+          <label>Mês</label>
+          <input type="month" id="mes">
+        </div>
+
+        <div class="toggle-row">
+          <label class="toggle-label" for="limit10">Últimos 10 arquivos</label>
+          <label class="toggle-switch">
+            <input type="checkbox" id="limit10" checked>
+            <span class="toggle-slider"></span>
+          </label>
+        </div>
+
+        <button id="btnSearch" class="btn-search">
+          <i class="bi bi-search me-2"></i>Buscar
+        </button>
+        <button id="btnClear" class="btn-clear">
+          <i class="bi bi-arrow-counterclockwise me-2"></i>Limpar
+        </button>
+      </div>
+
+      <div class="sidebar-footer">
+        <button class="btn-api-key" data-bs-toggle="modal" data-bs-target="#apiKeyModal">
+          <i class="bi bi-key me-2"></i>API Key
+          <i class="bi bi-gear ms-auto"></i>
+        </button>
+      </div>
+    </aside>
+
+    <!-- Overlay mobile -->
+    <div class="sidebar-overlay" id="sidebarOverlay"></div>
+
+    <!-- MAIN -->
+    <main class="main-content">
+
+      <!-- Top bar -->
+      <div class="topbar">
+        <button class="btn-icon d-md-none" id="btnOpenSidebar">
+          <i class="bi bi-list fs-4"></i>
+        </button>
+        <div class="topbar-title d-none d-md-block">Resultados</div>
+        <div class="topbar-actions">
+          <div class="search-inline-wrap" id="searchInlineWrap" style="display:none!important">
+            <i class="bi bi-funnel"></i>
+            <input type="text" id="quickSearch" placeholder="Filtrar resultados...">
           </div>
+          <button class="btn-icon" id="btnDarkMode" title="Alternar tema">
+            <i class="bi bi-moon-stars-fill" id="darkModeIcon"></i>
+          </button>
+        </div>
+      </div>
 
-          <div class="filter-group">
-            <label for="tag1">Tag 1 (Estudante)</label>
-            <input type="text" id="tag1" placeholder="Ex: Lucas Batista, João Silva">
-          </div>
+      <!-- Feedback -->
+      <div id="toast" class="toast-msg" style="display:none"></div>
 
-          <div class="filter-group">
-            <label for="tag2">Tag 2 (Turma)</label>
-            <input type="text" id="tag2" placeholder="Ex: 3TACM1">
-          </div>
+      <!-- Loading -->
+      <div id="loading" class="loading-state" style="display:none">
+        <div class="spinner"></div>
+        <p id="loadingText">Carregando arquivos...</p>
+      </div>
 
-          <div class="filter-group">
-            <label for="tag3">Tag 3 (E-mail)</label>
-            <input type="text" id="tag3" placeholder="Ex: professor@escola.com">
-          </div>
+      <!-- Empty / no results -->
+      <div id="noResults" class="empty-state" style="display:none">
+        <i class="bi bi-inbox"></i>
+        <p>Nenhum arquivo encontrado</p>
+        <small>Ajuste os filtros e busque novamente</small>
+      </div>
 
-          <div class="filter-group">
-            <label for="mes">Mês</label>
-            <input type="month" id="mes">
-          </div>
-
-          <div class="filter-group">
-            <label for="limit10">
-              <input type="checkbox" id="limit10" checked>
-              Últimos 10 arquivos
-            </label>
-          </div>
-
-          <div class="filter-group full-width">
-            <button id="btnSearch" class="btn btn-primary">🔎 Buscar</button>
-            <button id="btnClear" class="btn btn-secondary">↺ Limpar Filtros</button>
-            <button id="btnDownloadZip" class="btn btn-success" style="display: none;">📦 Baixar Selecionados (.zip)</button>
-            <button id="btnPrintSelected" class="btn btn-info" style="display: none;">🖨️ Imprimir Selecionados</button>
+      <!-- Results area -->
+      <div id="resultsArea" style="display:none">
+        <div class="results-meta">
+          <span id="resultCount" class="result-badge">0 arquivos</span>
+          <div class="sort-controls">
+            <span class="sort-label">Ordenar:</span>
+            <button class="sort-btn active" data-sort="date">Data <i class="bi bi-arrow-down-up"></i></button>
+            <button class="sort-btn" data-sort="tag1">Estudante <i class="bi bi-arrow-down-up"></i></button>
+            <button class="sort-btn" data-sort="tag2">Turma <i class="bi bi-arrow-down-up"></i></button>
           </div>
         </div>
 
-        <div id="apiKeySection" class="api-key-section">
-          <label for="apiKey">🔐 API Key (obrigatória)</label>
-          <input type="password" id="apiKey" placeholder="Cole sua chave de API aqui">
-          <small>Sua chave é usada apenas localmente no navegador</small>
-        </div>
-      </section>
-
-      <!-- Seção de Resultados -->
-      <section class="results-section">
-        <div class="results-header">
-          <h2>📋 Resultados</h2>
-          <div id="resultCount" class="result-count">0 arquivos encontrados</div>
+        <!-- Filtro inline pós-busca -->
+        <div class="search-inline-bar">
+          <i class="bi bi-funnel"></i>
+          <input type="text" id="quickSearchBar" placeholder="Filtrar nos resultados...">
         </div>
 
-        <div id="loading" class="loading" style="display: none;">
-          <div class="spinner"></div>
-          <p>Carregando arquivos...</p>
+        <!-- Tabela -->
+        <div class="table-card">
+          <table class="files-table" id="filesTable">
+            <thead>
+              <tr>
+                <th style="width:44px">
+                  <input type="checkbox" class="ck" id="selectAllCheckbox">
+                </th>
+                <th>Arquivo</th>
+                <th class="d-none d-lg-table-cell">Tamanho</th>
+                <th>Estudante</th>
+                <th class="d-none d-md-table-cell">Turma</th>
+                <th class="d-none d-lg-table-cell">E-mail</th>
+                <th class="d-none d-md-table-cell">Data</th>
+                <th style="width:100px">Ações</th>
+              </tr>
+            </thead>
+            <tbody id="filesList"></tbody>
+          </table>
         </div>
+      </div>
 
-        <div id="error" class="error-message" style="display: none;"></div>
-
-        <div id="noResults" class="no-results" style="display: none;">
-          <p>📭 Nenhum arquivo encontrado com os filtros selecionados</p>
-        </div>
-
-        <div id="tableControls" class="table-controls" style="display: none; margin-bottom: 15px;">
-          <button id="btnSelectNone" class="btn btn-secondary btn-small">☐ Nenhum</button>
-          <button id="btnSelectAll" class="btn btn-secondary btn-small">☑ Todos</button>
-        </div>
-
-        <table id="filesTable" class="files-table" style="display: none;">
-          <thead>
-            <tr>
-              <th style="width: 40px;"><input type="checkbox" id="selectAllCheckbox" class="select-all-checkbox"></th>
-              <th>Arquivo</th>
-              <th>Tamanho</th>
-              <th>Tipo</th>
-              <th class="sortable" data-sort="date">Data de Upload <span class="sort-icon">⇅</span></th>
-              <th class="sortable" data-sort="tag1">Estudante <span class="sort-icon">⇅</span></th>
-              <th class="sortable" data-sort="tag2">Turma <span class="sort-icon">⇅</span></th>
-              <th class="sortable" data-sort="tag3">E-mail <span class="sort-icon">⇅</span></th>
-              <th>Ações</th>
-            </tr>
-          </thead>
-          <tbody id="filesList">
-          </tbody>
-        </table>
-      </section>
     </main>
-
-    <footer>
-      <p>© 2026 SML Storage API • <a href="https://github.com/projetos-ept/sml-storage-api" target="_blank">GitHub</a></p>
-    </footer>
   </div>
 
-  <!-- Modal de Download -->
-  <div id="downloadModal" class="modal" style="display: none;">
-    <div class="modal-content">
-      <span class="modal-close" onclick="closeDownloadModal()">&times;</span>
-      <h2>📦 Preparar Download</h2>
-      <div id="downloadModalBody">
-        <p>Você está prestes a baixar <strong id="downloadCount">0</strong> arquivo(s) em um arquivo ZIP.</p>
-        <div style="margin: 20px 0;">
-          <label for="zipFileName">Nome do arquivo ZIP:</label>
-          <input type="text" id="zipFileName" placeholder="Ex: arquivos_selecionados" value="arquivos_selecionados">
+  <!-- FLOATING ACTION BAR -->
+  <div class="floating-bar" id="floatingBar">
+    <span class="floating-bar-count"><strong id="selectedCount">0</strong> selecionado(s)</span>
+    <div class="floating-bar-sep"></div>
+    <button class="floating-btn" id="btnDownloadZip">
+      <i class="bi bi-file-zip"></i> ZIP
+    </button>
+    <button class="floating-btn" id="btnPrintSelected">
+      <i class="bi bi-printer"></i> Imprimir
+    </button>
+    <button class="floating-btn danger" id="btnDeselectAll">
+      <i class="bi bi-x"></i>
+    </button>
+  </div>
+
+  <!-- MODAL API KEY -->
+  <div class="modal fade" id="apiKeyModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content modal-custom">
+        <div class="modal-header border-0">
+          <h5 class="modal-title"><i class="bi bi-shield-lock me-2 text-primary"></i>API Key</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
         </div>
-        <div style="display: flex; gap: 10px;">
-          <button onclick="executeZipDownload()" class="btn btn-primary">✓ Confirmar Download</button>
-          <button onclick="closeDownloadModal()" class="btn btn-secondary">✗ Cancelar</button>
+        <div class="modal-body">
+          <p class="text-muted small mb-3">Sua chave é salva apenas localmente no navegador.</p>
+          <div class="input-group">
+            <span class="input-group-text"><i class="bi bi-key"></i></span>
+            <input type="password" class="form-control" id="apiKey" placeholder="Cole sua API Key aqui...">
+            <button class="btn btn-outline-secondary" type="button" id="toggleApiEye">
+              <i class="bi bi-eye" id="eyeIcon"></i>
+            </button>
+          </div>
+        </div>
+        <div class="modal-footer border-0">
+          <button type="button" class="btn btn-light" data-bs-dismiss="modal">Cancelar</button>
+          <button type="button" class="btn btn-primary px-4" id="btnSaveApi" data-bs-dismiss="modal">Salvar</button>
         </div>
       </div>
     </div>
   </div>
 
-  <!-- Modal de Impressão -->
-  <div id="printModal" class="modal" style="display: none;">
-    <div class="modal-content">
-      <span class="modal-close" onclick="closePrintModal()">&times;</span>
-      <h2>🖨️ Imprimir Selecionados</h2>
-      <div id="printModalBody">
-        <p>Os <strong id="printCount">0</strong> arquivo(s) selecionados serão abertos e enviados para a impressora em uma única chamada.</p>
-        <p style="color: #666; font-size: 0.9em; margin-top: 10px;">⚠️ Certifique-se de que o navegador permite pop-ups para este site.</p>
-        <div style="display: flex; gap: 10px; margin-top: 20px;">
-          <button onclick="executePrint()" class="btn btn-primary">✓ Imprimir</button>
-          <button onclick="closePrintModal()" class="btn btn-secondary">✗ Cancelar</button>
+  <!-- MODAL DOWNLOAD ZIP -->
+  <div class="modal fade" id="downloadModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content modal-custom">
+        <div class="modal-header border-0">
+          <h5 class="modal-title"><i class="bi bi-file-zip me-2 text-success"></i>Baixar como ZIP</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <p class="text-muted small">Baixar <strong id="downloadCount">0</strong> arquivo(s) em um ZIP.</p>
+          <label class="form-label small fw-semibold mt-2">Nome do arquivo</label>
+          <input type="text" class="form-control" id="zipFileName" value="arquivos_selecionados">
+        </div>
+        <div class="modal-footer border-0">
+          <button type="button" class="btn btn-light" data-bs-dismiss="modal">Cancelar</button>
+          <button type="button" class="btn btn-success px-4" onclick="executeZipDownload()">
+            <i class="bi bi-download me-1"></i>Baixar ZIP
+          </button>
         </div>
       </div>
     </div>
   </div>
 
+  <!-- MODAL IMPRESSÃO -->
+  <div class="modal fade" id="printModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content modal-custom">
+        <div class="modal-header border-0">
+          <h5 class="modal-title"><i class="bi bi-printer me-2 text-primary"></i>Imprimir em Lote</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <p class="text-muted small"><strong id="printCount">0</strong> arquivo(s) serão renderizados e enviados para a impressora em uma única chamada.</p>
+          <p class="text-warning small mt-2"><i class="bi bi-exclamation-triangle me-1"></i>Permita pop-ups para este site.</p>
+        </div>
+        <div class="modal-footer border-0">
+          <button type="button" class="btn btn-light" data-bs-dismiss="modal">Cancelar</button>
+          <button type="button" class="btn btn-primary px-4" onclick="executePrint()">
+            <i class="bi bi-printer me-1"></i>Imprimir
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
   <script src="app.js"></script>

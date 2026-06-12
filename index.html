@@ -142,14 +142,9 @@
       <span class="modal-close" onclick="closePrintModal()">&times;</span>
       <h2>🖨️ Imprimir Selecionados</h2>
       <div id="printModalBody">
-        <p>Você está prestes a imprimir <strong id="printCount">0</strong> arquivo(s).</p>
-        <div style="margin: 20px 0;">
-          <label>
-            <input type="checkbox" id="printLinks" checked>
-            Incluir links para download dos arquivos
-          </label>
-        </div>
-        <div style="display: flex; gap: 10px;">
+        <p>Os <strong id="printCount">0</strong> arquivo(s) selecionados serão abertos e enviados para a impressora em uma única chamada.</p>
+        <p style="color: #666; font-size: 0.9em; margin-top: 10px;">⚠️ Certifique-se de que o navegador permite pop-ups para este site.</p>
+        <div style="display: flex; gap: 10px; margin-top: 20px;">
           <button onclick="executePrint()" class="btn btn-primary">✓ Imprimir</button>
           <button onclick="closePrintModal()" class="btn btn-secondary">✗ Cancelar</button>
         </div>

@@ -125,6 +125,12 @@ async function search() {
     }
 
     currentUploads = data.uploads || [];
+
+    // Apply limit client-side in case API ignores it
+    if (limit10Checkbox.checked) {
+      currentUploads = currentUploads.slice(0, 10);
+    }
+
     displayResults();
   } catch (error) {
     hideLoading();
@@ -443,61 +449,75 @@ function executePrint() {
     return;
   }
 
-  const includeLinks = document.getElementById('printLinks').checked;
   closePrintModal();
 
-  // Create print window
+  // Build a page with all PDFs embedded, one per page, then print
   const printWindow = window.open('', '_blank');
-  let html = `
-    <!DOCTYPE html>
-    <html lang="pt-BR">
-    <head>
-      <meta charset="UTF-8">
-      <title>Imprimir Arquivos Selecionados</title>
-      <style>
-        body { font-family: Arial, sans-serif; padding: 20px; }
-        h1 { color: #0066cc; border-bottom: 2px solid #0066cc; padding-bottom: 10px; }
-        .file-item { margin: 15px 0; padding: 10px; border-left: 4px solid #0066cc; background: #f5f5f5; }
-        .file-name { font-weight: bold; color: #333; }
-        .file-info { font-size: 0.9em; color: #666; margin-top: 5px; }
-        .file-url { color: #0066cc; word-break: break-all; font-size: 0.85em; }
-        @media print {
-          body { padding: 10px; }
-          .file-item { page-break-inside: avoid; }
-        }
-      </style>
-    </head>
-    <body>
-      <h1>📋 Arquivos Selecionados para Impressão</h1>
-      <p>Data: ${new Date().toLocaleDateString('pt-BR')}</p>
-      <p>Total: ${selected.length} arquivo(s)</p>
-      <hr>
-  `;
+  let embedsHtml = '';
 
   selected.forEach((upload, index) => {
-    html += `
-      <div class="file-item">
-        <div class="file-name">${index + 1}. ${escapeHtml(upload.filename)}</div>
-        <div class="file-info">
-          <strong>Tamanho:</strong> ${formatFileSize(upload.size)} |
-          <strong>Tipo:</strong> ${(upload.format || 'N/A').toUpperCase()} |
-          <strong>Data:</strong> ${formatDate(upload.uploadedAtISO)}
-        </div>
-        <div class="file-info">
-          <strong>Estudante:</strong> ${escapeHtml(upload.tags?.tag1 || '—')} |
-          <strong>Turma:</strong> ${escapeHtml(upload.tags?.tag2 || '—')} |
-          <strong>E-mail:</strong> ${escapeHtml(upload.tags?.tag3 || '—')}
-        </div>
-        ${includeLinks ? `<div class="file-url"><strong>Link:</strong> <a href="${escapeHtml(upload.url)}" target="_blank">${escapeHtml(upload.url)}</a></div>` : ''}
+    const isLast = index === selected.length - 1;
+    embedsHtml += `
+      <div class="pdf-page" style="${isLast ? '' : 'page-break-after: always;'}">
+        <embed
+          src="${escapeHtml(upload.url)}#toolbar=0&navpanes=0&scrollbar=0&view=FitH"
+          type="application/pdf"
+          width="100%"
+          height="100%"
+        >
       </div>
     `;
   });
 
-  html += `
-      <hr>
-      <p style="font-size: 0.9em; color: #999; margin-top: 30px;">
-        Gerado em ${new Date().toLocaleString('pt-BR')}
-      </p>
+  const html = `
+    <!DOCTYPE html>
+    <html lang="pt-BR">
+    <head>
+      <meta charset="UTF-8">
+      <title>Impressão em Lote (${selected.length} arquivo(s))</title>
+      <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        html, body { width: 100%; height: 100%; }
+        .pdf-page {
+          width: 100vw;
+          height: 100vh;
+        }
+        .pdf-page embed {
+          display: block;
+          width: 100%;
+          height: 100%;
+          border: none;
+        }
+        @media print {
+          .pdf-page {
+            width: 100%;
+            height: 100vh;
+          }
+        }
+      </style>
+    </head>
+    <body>
+      ${embedsHtml}
+      <script>
+        // Wait for embeds to load then print
+        let loaded = 0;
+        const total = ${selected.length};
+        const embeds = document.querySelectorAll('embed');
+
+        function tryPrint() {
+          loaded++;
+          if (loaded >= total) {
+            setTimeout(() => window.print(), 500);
+          }
+        }
+
+        embeds.forEach(embed => {
+          embed.addEventListener('load', tryPrint);
+          // Fallback: start print after 3s regardless
+        });
+
+        setTimeout(() => window.print(), 3000);
+      <\/script>
     </body>
     </html>
   `;
@@ -505,13 +525,8 @@ function executePrint() {
   printWindow.document.write(html);
   printWindow.document.close();
 
-  // Wait for page to load then print
-  printWindow.addEventListener('load', () => {
-    printWindow.print();
-  });
-
-  showError('✓ Janela de impressão aberta');
-  setTimeout(hideError, 2000);
+  showError(`✓ Abrindo ${selected.length} arquivo(s) para impressão...`);
+  setTimeout(hideError, 3000);
 }
 
 function handleSort(field) {

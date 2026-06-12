@@ -233,6 +233,18 @@ main {
   box-shadow: 0 4px 12px rgba(40, 167, 69, 0.3);
 }
 
+.btn-info {
+  background-color: var(--info-color);
+  color: white;
+  flex: 0 1 auto;
+}
+
+.btn-info:hover {
+  background-color: #117a8b;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(23, 162, 184, 0.3);
+}
+
 .btn-small {
   padding: 6px 12px;
   font-size: 0.85em;
@@ -523,7 +535,8 @@ main {
   color: var(--primary-color);
 }
 
-#downloadModal .modal-content input {
+#downloadModal .modal-content input,
+#printModal .modal-content input {
   width: 100%;
   padding: 10px 12px;
   border: 1px solid var(--border-color);
@@ -532,8 +545,21 @@ main {
   margin-bottom: 15px;
 }
 
-#downloadModal .modal-content p {
+#downloadModal .modal-content p,
+#printModal .modal-content p {
   margin-bottom: 15px;
+}
+
+#printModal .modal-content label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+}
+
+#printModal .modal-content label input[type="checkbox"] {
+  width: auto;
+  margin: 0;
 }
 
 .modal-detail {

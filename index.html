@@ -58,6 +58,7 @@
             <button id="btnSearch" class="btn btn-primary">🔎 Buscar</button>
             <button id="btnClear" class="btn btn-secondary">↺ Limpar Filtros</button>
             <button id="btnDownloadZip" class="btn btn-success" style="display: none;">📦 Baixar Selecionados (.zip)</button>
+            <button id="btnPrintSelected" class="btn btn-info" style="display: none;">🖨️ Imprimir Selecionados</button>
           </div>
         </div>
 
@@ -130,6 +131,27 @@
         <div style="display: flex; gap: 10px;">
           <button onclick="executeZipDownload()" class="btn btn-primary">✓ Confirmar Download</button>
           <button onclick="closeDownloadModal()" class="btn btn-secondary">✗ Cancelar</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal de Impressão -->
+  <div id="printModal" class="modal" style="display: none;">
+    <div class="modal-content">
+      <span class="modal-close" onclick="closePrintModal()">&times;</span>
+      <h2>🖨️ Imprimir Selecionados</h2>
+      <div id="printModalBody">
+        <p>Você está prestes a imprimir <strong id="printCount">0</strong> arquivo(s).</p>
+        <div style="margin: 20px 0;">
+          <label>
+            <input type="checkbox" id="printLinks" checked>
+            Incluir links para download dos arquivos
+          </label>
+        </div>
+        <div style="display: flex; gap: 10px;">
+          <button onclick="executePrint()" class="btn btn-primary">✓ Imprimir</button>
+          <button onclick="closePrintModal()" class="btn btn-secondary">✗ Cancelar</button>
         </div>
       </div>
     </div>

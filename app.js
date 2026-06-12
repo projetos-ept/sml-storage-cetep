@@ -19,8 +19,10 @@ const filesList = document.getElementById('filesList');
 const resultCount = document.getElementById('resultCount');
 
 const downloadModal = document.getElementById('downloadModal');
+const printModal = document.getElementById('printModal');
 const tableControls = document.getElementById('tableControls');
 const btnDownloadZip = document.getElementById('btnDownloadZip');
+const btnPrintSelected = document.getElementById('btnPrintSelected');
 const btnSelectNone = document.getElementById('btnSelectNone');
 const btnSelectAll = document.getElementById('btnSelectAll');
 const selectAllCheckbox = document.getElementById('selectAllCheckbox');
@@ -32,11 +34,15 @@ let currentSort = { field: null, direction: 'asc' };
 btnSearch.addEventListener('click', search);
 btnClear.addEventListener('click', clearFilters);
 btnDownloadZip.addEventListener('click', openDownloadModal);
+btnPrintSelected.addEventListener('click', openPrintModal);
 btnSelectNone.addEventListener('click', selectNoneFiles);
 btnSelectAll.addEventListener('click', selectAllFiles);
 selectAllCheckbox.addEventListener('change', toggleSelectAll);
 downloadModal.addEventListener('click', (e) => {
   if (e.target === downloadModal) closeDownloadModal();
+});
+printModal.addEventListener('click', (e) => {
+  if (e.target === printModal) closePrintModal();
 });
 
 // Load API key from localStorage on page load
@@ -132,6 +138,7 @@ function displayResults() {
     filesTable.style.display = 'none';
     tableControls.style.display = 'none';
     btnDownloadZip.style.display = 'none';
+    btnPrintSelected.style.display = 'none';
     noResultsDiv.style.display = 'block';
     resultCount.textContent = '0 arquivos encontrados';
     return;
@@ -149,6 +156,7 @@ function displayResults() {
   filesTable.style.display = 'table';
   tableControls.style.display = 'flex';
   btnDownloadZip.style.display = 'inline-flex';
+  btnPrintSelected.style.display = 'inline-flex';
   selectAllCheckbox.checked = false;
 }
 
@@ -359,25 +367,31 @@ async function executeZipDownload() {
 
   try {
     const zip = new JSZip();
+    let successCount = 0;
+    let failCount = 0;
 
     // Fetch all files
     for (let i = 0; i < selected.length; i++) {
       const upload = selected[i];
-      showLoading();
-
-      // Update loading message
-      document.querySelector('.loading p').textContent = `Adicionando arquivo ${i + 1} de ${selected.length}...`;
+      document.querySelector('.loading p').textContent = `Baixando arquivo ${i + 1} de ${selected.length}...`;
 
       try {
-        const response = await fetch(upload.url);
+        const response = await fetch(upload.url, { mode: 'cors' });
         if (!response.ok) throw new Error(`HTTP ${response.status}`);
 
         const blob = await response.blob();
         zip.file(upload.filename, blob);
+        successCount++;
       } catch (error) {
         console.error(`Erro ao buscar ${upload.filename}:`, error);
-        showError(`⚠️ Erro ao buscar ${upload.filename}. Continuando com os demais...`);
+        failCount++;
       }
+    }
+
+    if (successCount === 0) {
+      hideLoading();
+      showError('❌ Nenhum arquivo foi baixado. Verifique a conexão e tente novamente.');
+      return;
     }
 
     // Generate ZIP
@@ -394,13 +408,110 @@ async function executeZipDownload() {
     URL.revokeObjectURL(link.href);
 
     hideLoading();
-    showError(`✓ Download de ${zipFileName}.zip concluído com sucesso!`);
-    setTimeout(hideError, 3000);
+    let message = `✓ Download de ${zipFileName}.zip concluído! (${successCount} arquivo(s))`;
+    if (failCount > 0) {
+      message += ` - ⚠️ ${failCount} arquivo(s) falharam`;
+    }
+    showError(message);
+    setTimeout(hideError, 4000);
   } catch (error) {
     hideLoading();
     showError(`❌ Erro ao criar ZIP: ${error.message}`);
     console.error('Erro:', error);
   }
+}
+
+function openPrintModal() {
+  const selected = getSelectedFiles();
+  if (selected.length === 0) {
+    showError('⚠️ Selecione pelo menos um arquivo para imprimir');
+    return;
+  }
+
+  document.getElementById('printCount').textContent = selected.length;
+  printModal.classList.add('show');
+}
+
+function closePrintModal() {
+  printModal.classList.remove('show');
+}
+
+function executePrint() {
+  const selected = getSelectedFiles();
+  if (selected.length === 0) {
+    showError('⚠️ Nenhum arquivo selecionado');
+    return;
+  }
+
+  const includeLinks = document.getElementById('printLinks').checked;
+  closePrintModal();
+
+  // Create print window
+  const printWindow = window.open('', '_blank');
+  let html = `
+    <!DOCTYPE html>
+    <html lang="pt-BR">
+    <head>
+      <meta charset="UTF-8">
+      <title>Imprimir Arquivos Selecionados</title>
+      <style>
+        body { font-family: Arial, sans-serif; padding: 20px; }
+        h1 { color: #0066cc; border-bottom: 2px solid #0066cc; padding-bottom: 10px; }
+        .file-item { margin: 15px 0; padding: 10px; border-left: 4px solid #0066cc; background: #f5f5f5; }
+        .file-name { font-weight: bold; color: #333; }
+        .file-info { font-size: 0.9em; color: #666; margin-top: 5px; }
+        .file-url { color: #0066cc; word-break: break-all; font-size: 0.85em; }
+        @media print {
+          body { padding: 10px; }
+          .file-item { page-break-inside: avoid; }
+        }
+      </style>
+    </head>
+    <body>
+      <h1>📋 Arquivos Selecionados para Impressão</h1>
+      <p>Data: ${new Date().toLocaleDateString('pt-BR')}</p>
+      <p>Total: ${selected.length} arquivo(s)</p>
+      <hr>
+  `;
+
+  selected.forEach((upload, index) => {
+    html += `
+      <div class="file-item">
+        <div class="file-name">${index + 1}. ${escapeHtml(upload.filename)}</div>
+        <div class="file-info">
+          <strong>Tamanho:</strong> ${formatFileSize(upload.size)} |
+          <strong>Tipo:</strong> ${(upload.format || 'N/A').toUpperCase()} |
+          <strong>Data:</strong> ${formatDate(upload.uploadedAtISO)}
+        </div>
+        <div class="file-info">
+          <strong>Estudante:</strong> ${escapeHtml(upload.tags?.tag1 || '—')} |
+          <strong>Turma:</strong> ${escapeHtml(upload.tags?.tag2 || '—')} |
+          <strong>E-mail:</strong> ${escapeHtml(upload.tags?.tag3 || '—')}
+        </div>
+        ${includeLinks ? `<div class="file-url"><strong>Link:</strong> <a href="${escapeHtml(upload.url)}" target="_blank">${escapeHtml(upload.url)}</a></div>` : ''}
+      </div>
+    `;
+  });
+
+  html += `
+      <hr>
+      <p style="font-size: 0.9em; color: #999; margin-top: 30px;">
+        Gerado em ${new Date().toLocaleString('pt-BR')}
+      </p>
+    </body>
+    </html>
+  `;
+
+  printWindow.document.write(html);
+  printWindow.document.close();
+
+  // Wait for page to load then print
+  printWindow.addEventListener('load', () => {
+    printWindow.print();
+  });
+
+  showError('✓ Janela de impressão aberta');
+  setTimeout(hideError, 2000);
 }
 
 function handleSort(field) {

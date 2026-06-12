@@ -346,7 +346,7 @@ function closeDownloadModal() {
   downloadModal.classList.remove('show');
 }
 
-function executeZipDownload() {
+async function executeZipDownload() {
   const selected = getSelectedFiles();
   if (selected.length === 0) {
     showError('⚠️ Nenhum arquivo selecionado');
@@ -357,19 +357,50 @@ function executeZipDownload() {
   closeDownloadModal();
   showLoading();
 
-  // Simulate zip download - in production, this would call a backend API
-  setTimeout(() => {
-    hideLoading();
-    showError('✓ Download iniciado! (Funcionalidade de ZIP será implementada no backend)');
-    setTimeout(hideError, 3000);
+  try {
+    const zip = new JSZip();
 
-    // For now, download files individually
-    selected.forEach((upload, index) => {
-      setTimeout(() => {
-        downloadFile(upload.url, upload.filename);
-      }, index * 200);
-    });
-  }, 500);
+    // Fetch all files
+    for (let i = 0; i < selected.length; i++) {
+      const upload = selected[i];
+      showLoading();
+
+      // Update loading message
+      document.querySelector('.loading p').textContent = `Adicionando arquivo ${i + 1} de ${selected.length}...`;
+
+      try {
+        const response = await fetch(upload.url);
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+
+        const blob = await response.blob();
+        zip.file(upload.filename, blob);
+      } catch (error) {
+        console.error(`Erro ao buscar ${upload.filename}:`, error);
+        showError(`⚠️ Erro ao buscar ${upload.filename}. Continuando com os demais...`);
+      }
+    }
+
+    // Generate ZIP
+    document.querySelector('.loading p').textContent = 'Gerando arquivo ZIP...';
+    const zipBlob = await zip.generateAsync({ type: 'blob' });
+
+    // Download ZIP
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(zipBlob);
+    link.download = `${zipFileName}.zip`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(link.href);
+
+    hideLoading();
+    showError(`✓ Download de ${zipFileName}.zip concluído com sucesso!`);
+    setTimeout(hideError, 3000);
+  } catch (error) {
+    hideLoading();
+    showError(`❌ Erro ao criar ZIP: ${error.message}`);
+    console.error('Erro:', error);
+  }
 }
 
 function handleSort(field) {

@@ -56,6 +56,11 @@ window.addEventListener('load', () => {
   document.querySelectorAll('.sort-btn').forEach(btn => {
     btn.addEventListener('click', () => handleSort(btn.dataset.sort));
   });
+
+  // Auto-search if API key is saved
+  if (savedKey) {
+    setTimeout(() => search(), 300);
+  }
 });
 
 // =====================
@@ -73,6 +78,18 @@ toggleApiEye.addEventListener('click', () => {
   const isPassword = apiKeyInput.type === 'password';
   apiKeyInput.type = isPassword ? 'text' : 'password';
   document.getElementById('eyeIcon').className = isPassword ? 'bi bi-eye-slash' : 'bi bi-eye';
+});
+
+document.getElementById('btnClearLocalStorage').addEventListener('click', () => {
+  if (confirm('Isso vai remover sua API Key e tema do localStorage. Tem certeza?')) {
+    localStorage.removeItem('sml_api_key');
+    localStorage.removeItem('sml_theme');
+    apiKeyInput.value = '';
+    setTheme('light');
+    clearFilters();
+    showToast('✓ Dados locais removidos');
+    bootstrap.Modal.getInstance(document.getElementById('apiKeyModal'))?.hide();
+  }
 });
 
 btnDownloadZip.addEventListener('click', openDownloadModal);

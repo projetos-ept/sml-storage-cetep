@@ -442,7 +442,7 @@ function closePrintModal() {
   printModal.classList.remove('show');
 }
 
-function executePrint() {
+async function executePrint() {
   const selected = getSelectedFiles();
   if (selected.length === 0) {
     showError('⚠️ Nenhum arquivo selecionado');
@@ -450,76 +450,83 @@ function executePrint() {
   }
 
   closePrintModal();
+  showLoading();
 
-  // Create print window with PDFs as iframes
-  const printWindow = window.open('', '_blank');
-  let iframesHtml = '';
+  try {
+    // Configure PDF.js worker
+    pdfjsLib.GlobalWorkerOptions.workerSrc =
+      'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
 
-  selected.forEach((upload, index) => {
-    iframesHtml += `
-      <iframe
-        src="${escapeHtml(upload.url)}#toolbar=0&navpanes=0"
-        style="width:100%; height:100vh; border:none; display:block; page-break-after:always;"
-      ></iframe>
-    `;
-  });
-
-  const html = `
-    <!DOCTYPE html>
-    <html lang="pt-BR">
-    <head>
-      <meta charset="UTF-8">
-      <title>Impressão em Lote - ${selected.length} arquivo(s)</title>
-      <style>
-        * {
-          margin: 0;
-          padding: 0;
-          box-sizing: border-box;
-        }
-        html, body {
-          width: 100%;
-          height: 100%;
-          overflow: hidden;
-        }
-        iframe {
-          display: block;
-          width: 100vw !important;
-          height: 100vh !important;
-          border: none !important;
-          margin: 0 !important;
-          padding: 0 !important;
-        }
-        @media print {
-          iframe {
-            width: 100% !important;
-            height: 100% !important;
+    // Open print window
+    const printWindow = window.open('', '_blank');
+    printWindow.document.write(`
+      <!DOCTYPE html>
+      <html lang="pt-BR">
+      <head>
+        <meta charset="UTF-8">
+        <title>Impressão em Lote</title>
+        <style>
+          * { margin: 0; padding: 0; box-sizing: border-box; }
+          body { background: white; }
+          canvas {
+            display: block;
+            width: 210mm;
+            height: auto;
             page-break-after: always;
-            page-break-inside: avoid;
           }
-          body {
-            margin: 0;
-            padding: 0;
+          canvas:last-child { page-break-after: avoid; }
+          @media print {
+            canvas {
+              width: 100%;
+              height: auto;
+              page-break-after: always;
+            }
           }
-        }
-      </style>
-    </head>
-    <body>
-      ${iframesHtml}
-      <script>
-        // Auto-print after 2 seconds
-        setTimeout(() => {
-          window.print();
-        }, 2000);
-      <\/script>
-    </body>
-    </html>
-  `;
+        </style>
+      </head>
+      <body id="printBody"></body>
+      </html>
+    `);
+    printWindow.document.close();
 
-  printWindow.document.write(html);
-  printWindow.document.close();
+    const printBody = printWindow.document.getElementById('printBody');
 
-  showError(`✓ Abrindo ${selected.length} arquivo(s) para impressão...`);
-  setTimeout(hideError, 3000);
+    for (let i = 0; i < selected.length; i++) {
+      const upload = selected[i];
+      document.querySelector('.loading p').textContent =
+        `Renderizando ${i + 1} de ${selected.length}: ${upload.filename}`;
+
+      const response = await fetch(upload.url);
+      const arrayBuffer = await response.arrayBuffer();
+      const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+
+      for (let pageNum = 1; pageNum <= pdf.numPages; pageNum++) {
+        const page = await pdf.getPage(pageNum);
+        const viewport = page.getViewport({ scale: 2.0 });
+
+        const canvas = printWindow.document.createElement('canvas');
+        canvas.width = viewport.width;
+        canvas.height = viewport.height;
+
+        const ctx = canvas.getContext('2d');
+        await page.render({ canvasContext: ctx, viewport }).promise;
+
+        printBody.appendChild(canvas);
+      }
+    }
+
+    hideLoading();
+    showError(`✓ Preparando impressão de ${selected.length} arquivo(s)...`);
+    setTimeout(hideError, 4000);
+
+    // Print after canvases are painted
+    setTimeout(() => printWindow.print(), 500);
+
+  } catch (error) {
+    hideLoading();
+    showError(`❌ Erro ao preparar impressão: ${error.message}`);
+    console.error('Erro:', error);
+  }
 }
 
 function handleSort(field) {

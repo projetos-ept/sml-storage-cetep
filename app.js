@@ -1,90 +1,127 @@
 const API_BASE = 'https://us-east1-sml-storage.cloudfunctions.net';
 
-// DOM Elements
-const projetoSelect = document.getElementById('projeto');
-const tag1Input = document.getElementById('tag1');
-const tag2Input = document.getElementById('tag2');
-const tag3Input = document.getElementById('tag3');
-const mesInput = document.getElementById('mes');
-const limit10Checkbox = document.getElementById('limit10');
-const apiKeyInput = document.getElementById('apiKey');
-const btnSearch = document.getElementById('btnSearch');
-const btnClear = document.getElementById('btnClear');
+// DOM
+const projetoSelect     = document.getElementById('projeto');
+const tag1Input         = document.getElementById('tag1');
+const tag2Input         = document.getElementById('tag2');
+const tag3Input         = document.getElementById('tag3');
+const mesInput          = document.getElementById('mes');
+const limit10Checkbox   = document.getElementById('limit10');
+const apiKeyInput       = document.getElementById('apiKey');
+const btnSearch         = document.getElementById('btnSearch');
+const btnClear          = document.getElementById('btnClear');
+const btnSaveApi        = document.getElementById('btnSaveApi');
+const toggleApiEye      = document.getElementById('toggleApiEye');
 
-const loadingDiv = document.getElementById('loading');
-const errorDiv = document.getElementById('error');
-const noResultsDiv = document.getElementById('noResults');
-const filesTable = document.getElementById('filesTable');
-const filesList = document.getElementById('filesList');
-const resultCount = document.getElementById('resultCount');
+const loadingDiv        = document.getElementById('loading');
+const loadingText       = document.getElementById('loadingText');
+const noResultsDiv      = document.getElementById('noResults');
+const resultsArea       = document.getElementById('resultsArea');
+const filesTable        = document.getElementById('filesTable');
+const filesList         = document.getElementById('filesList');
+const resultCount       = document.getElementById('resultCount');
+const quickSearchBar    = document.getElementById('quickSearchBar');
 
-const downloadModal = document.getElementById('downloadModal');
-const printModal = document.getElementById('printModal');
-const tableControls = document.getElementById('tableControls');
-const btnDownloadZip = document.getElementById('btnDownloadZip');
-const btnPrintSelected = document.getElementById('btnPrintSelected');
-const btnSelectNone = document.getElementById('btnSelectNone');
-const btnSelectAll = document.getElementById('btnSelectAll');
+const floatingBar       = document.getElementById('floatingBar');
+const selectedCount     = document.getElementById('selectedCount');
+const btnDownloadZip    = document.getElementById('btnDownloadZip');
+const btnPrintSelected  = document.getElementById('btnPrintSelected');
+const btnDeselectAll    = document.getElementById('btnDeselectAll');
 const selectAllCheckbox = document.getElementById('selectAllCheckbox');
 
+const btnDarkMode       = document.getElementById('btnDarkMode');
+const darkModeIcon      = document.getElementById('darkModeIcon');
+const btnOpenSidebar    = document.getElementById('btnOpenSidebar');
+const btnCloseSidebar   = document.getElementById('btnCloseSidebar');
+const sidebar           = document.getElementById('sidebar');
+const sidebarOverlay    = document.getElementById('sidebarOverlay');
+
 let currentUploads = [];
-let currentSort = { field: null, direction: 'asc' };
+let currentSort = { field: 'date', direction: 'desc' };
 
-// Event Listeners
-btnSearch.addEventListener('click', search);
-btnClear.addEventListener('click', clearFilters);
-btnDownloadZip.addEventListener('click', openDownloadModal);
-btnPrintSelected.addEventListener('click', openPrintModal);
-btnSelectNone.addEventListener('click', selectNoneFiles);
-btnSelectAll.addEventListener('click', selectAllFiles);
-selectAllCheckbox.addEventListener('change', toggleSelectAll);
-downloadModal.addEventListener('click', (e) => {
-  if (e.target === downloadModal) closeDownloadModal();
-});
-printModal.addEventListener('click', (e) => {
-  if (e.target === printModal) closePrintModal();
-});
-
-// Load API key from localStorage on page load
+// =====================
+// INIT
+// =====================
 window.addEventListener('load', () => {
-  const savedApiKey = localStorage.getItem('sml_api_key');
-  if (savedApiKey) {
-    apiKeyInput.value = savedApiKey;
-  }
+  const savedKey = localStorage.getItem('sml_api_key');
+  if (savedKey) apiKeyInput.value = savedKey;
 
-  // Set current month as default
   const now = new Date();
-  const year = now.getFullYear();
-  const month = String(now.getMonth() + 1).padStart(2, '0');
-  mesInput.value = `${year}-${month}`;
+  mesInput.value = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
 
-  // Add sort event listeners
-  document.querySelectorAll('th.sortable').forEach(th => {
-    th.addEventListener('click', () => handleSort(th.dataset.sort));
+  const savedTheme = localStorage.getItem('sml_theme') || 'light';
+  setTheme(savedTheme);
+
+  // Sort buttons
+  document.querySelectorAll('.sort-btn').forEach(btn => {
+    btn.addEventListener('click', () => handleSort(btn.dataset.sort));
   });
 });
 
-// Save API key to localStorage when changed
-apiKeyInput.addEventListener('change', () => {
-  localStorage.setItem('sml_api_key', apiKeyInput.value);
+// =====================
+// EVENTS
+// =====================
+btnSearch.addEventListener('click', search);
+btnClear.addEventListener('click', clearFilters);
+
+btnSaveApi.addEventListener('click', () => {
+  const key = apiKeyInput.value.trim();
+  if (key) localStorage.setItem('sml_api_key', key);
 });
 
+toggleApiEye.addEventListener('click', () => {
+  const isPassword = apiKeyInput.type === 'password';
+  apiKeyInput.type = isPassword ? 'text' : 'password';
+  document.getElementById('eyeIcon').className = isPassword ? 'bi bi-eye-slash' : 'bi bi-eye';
+});
+
+btnDownloadZip.addEventListener('click', openDownloadModal);
+btnPrintSelected.addEventListener('click', openPrintModal);
+btnDeselectAll.addEventListener('click', selectNoneFiles);
+selectAllCheckbox.addEventListener('change', toggleSelectAll);
+
+// Real-time inline filter
+quickSearchBar.addEventListener('input', renderFilteredRows);
+
+// Dark mode
+btnDarkMode.addEventListener('click', () => {
+  const next = document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark';
+  setTheme(next);
+  localStorage.setItem('sml_theme', next);
+});
+
+// Sidebar mobile
+btnOpenSidebar?.addEventListener('click', () => {
+  sidebar.classList.add('open');
+  sidebarOverlay.classList.add('show');
+});
+btnCloseSidebar?.addEventListener('click', closeSidebar);
+sidebarOverlay.addEventListener('click', closeSidebar);
+
+function closeSidebar() {
+  sidebar.classList.remove('open');
+  sidebarOverlay.classList.remove('show');
+}
+
+// =====================
+// THEME
+// =====================
+function setTheme(theme) {
+  document.documentElement.dataset.theme = theme;
+  darkModeIcon.className = theme === 'dark' ? 'bi bi-sun-fill' : 'bi bi-moon-stars-fill';
+}
+
+// =====================
+// SEARCH
+// =====================
 async function search() {
   const apiKey = apiKeyInput.value.trim();
   const projeto = projetoSelect.value;
 
-  if (!apiKey) {
-    showError('⚠️ Por favor, informe sua API Key');
-    return;
-  }
+  if (!apiKey) { showToast('⚠️ Informe a API Key (clique em "API Key" na barra lateral)'); return; }
+  if (!projeto) { showToast('⚠️ Selecione um projeto'); return; }
 
-  if (!projeto) {
-    showError('⚠️ Por favor, selecione um projeto');
-    return;
-  }
-
-  showLoading();
-  hideError();
+  showLoading('Buscando arquivos...');
 
   try {
     const body = {
@@ -92,124 +129,214 @@ async function search() {
       tag1: tag1Input.value.trim() || undefined,
       tag2: tag2Input.value.trim() || undefined,
       tag3: tag3Input.value.trim() || undefined,
-      mes: mesInput.value || undefined,
+      mes:  mesInput.value || undefined,
     };
-
-    // Add limit if checkbox is checked
-    if (limit10Checkbox.checked) {
-      body.limit = 10;
-    }
-
-    // Remove undefined fields
-    Object.keys(body).forEach(key => body[key] === undefined && delete body[key]);
+    Object.keys(body).forEach(k => body[k] === undefined && delete body[k]);
 
     const response = await fetch(`${API_BASE}/listUploads`, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-api-key': apiKey,
-      },
+      headers: { 'Content-Type': 'application/json', 'x-api-key': apiKey },
       body: JSON.stringify(body),
     });
 
     const data = await response.json();
-
     hideLoading();
 
-    if (!response.ok) {
-      throw new Error(data.error || `Erro: ${response.status}`);
-    }
-
-    if (!data.success) {
-      throw new Error(data.error);
-    }
+    if (!response.ok || !data.success) throw new Error(data.error || `Erro ${response.status}`);
 
     currentUploads = data.uploads || [];
+    if (limit10Checkbox.checked) currentUploads = currentUploads.slice(0, 10);
 
-    // Apply limit client-side in case API ignores it
-    if (limit10Checkbox.checked) {
-      currentUploads = currentUploads.slice(0, 10);
-    }
-
+    sortUploads();
     displayResults();
-  } catch (error) {
+    closeSidebar();
+
+  } catch (err) {
     hideLoading();
-    showError(`❌ ${error.message}`);
-    console.error('Erro:', error);
+    showToast(`❌ ${err.message}`);
+    console.error(err);
   }
 }
 
+// =====================
+// DISPLAY
+// =====================
 function displayResults() {
+  quickSearchBar.value = '';
+
   if (currentUploads.length === 0) {
-    filesTable.style.display = 'none';
-    tableControls.style.display = 'none';
-    btnDownloadZip.style.display = 'none';
-    btnPrintSelected.style.display = 'none';
-    noResultsDiv.style.display = 'block';
-    resultCount.textContent = '0 arquivos encontrados';
+    resultsArea.style.display = 'none';
+    noResultsDiv.style.display = 'flex';
     return;
   }
 
-  resultCount.textContent = `${currentUploads.length} arquivo(s) encontrado(s)`;
+  noResultsDiv.style.display = 'none';
+  resultsArea.style.display = 'block';
+  resultCount.textContent = `${currentUploads.length} arquivo(s)`;
+
+  renderFilteredRows();
+  selectAllCheckbox.checked = false;
+  updateFloatingBar();
+}
+
+function renderFilteredRows() {
+  const term = quickSearchBar.value.toLowerCase().trim();
   filesList.innerHTML = '';
 
-  currentUploads.forEach((upload) => {
-    const row = createTableRow(upload);
-    filesList.appendChild(row);
-  });
+  const filtered = term
+    ? currentUploads.filter(u =>
+        (u.filename || '').toLowerCase().includes(term) ||
+        (u.tags?.tag1 || '').toLowerCase().includes(term) ||
+        (u.tags?.tag2 || '').toLowerCase().includes(term) ||
+        (u.tags?.tag3 || '').toLowerCase().includes(term)
+      )
+    : currentUploads;
 
-  noResultsDiv.style.display = 'none';
-  filesTable.style.display = 'table';
-  tableControls.style.display = 'flex';
-  btnDownloadZip.style.display = 'inline-flex';
-  btnPrintSelected.style.display = 'inline-flex';
-  selectAllCheckbox.checked = false;
+  if (filtered.length === 0) {
+    filesList.innerHTML = `<tr><td colspan="8" style="text-align:center;padding:30px;color:var(--text-2)">Nenhum resultado para "${term}"</td></tr>`;
+    return;
+  }
+
+  filtered.forEach(upload => filesList.appendChild(createTableRow(upload)));
+  resultCount.textContent = term
+    ? `${filtered.length} de ${currentUploads.length} arquivo(s)`
+    : `${currentUploads.length} arquivo(s)`;
 }
 
 function createTableRow(upload) {
   const row = document.createElement('tr');
-  row.dataset.uploadId = upload.id;
-  row.dataset.uploadUrl = upload.url;
-  row.dataset.fileName = upload.filename;
-  row.dataset.date = upload.uploadedAtISO;
-  row.dataset.tag1 = (upload.tags?.tag1 || '').toLowerCase();
-  row.dataset.tag2 = (upload.tags?.tag2 || '').toLowerCase();
-  row.dataset.tag3 = (upload.tags?.tag3 || '').toLowerCase();
 
-  const fileName = upload.filename || 'N/A';
-  const fileSize = formatFileSize(upload.size || 0);
-  const fileFormat = (upload.format || 'N/A').toUpperCase();
+  const fileName   = upload.filename || 'N/A';
+  const fileSize   = formatFileSize(upload.size || 0);
+  const format     = (upload.format || '').toLowerCase();
   const uploadDate = formatDate(upload.uploadedAtISO);
+  const tag1       = upload.tags?.tag1 || '—';
+  const tag2       = upload.tags?.tag2 || '—';
+  const tag3       = upload.tags?.tag3 || '—';
 
-  const tags = upload.tags || {};
-  const tag1 = tags.tag1 || '—';
-  const tag2 = tags.tag2 || '—';
-  const tag3 = tags.tag3 || '—';
+  const iconClass = format === 'pdf' ? 'pdf' : ['jpg','jpeg','png','gif','webp'].includes(format) ? 'img' : 'other';
+  const iconName  = iconClass === 'pdf' ? 'bi-file-earmark-pdf-fill'
+                  : iconClass === 'img' ? 'bi-file-earmark-image-fill'
+                  : 'bi-file-earmark-fill';
 
   row.innerHTML = `
-    <td><input type="checkbox" class="row-checkbox" data-file-id="${upload.id}"></td>
-    <td><span class="file-name">${escapeHtml(fileName)}</span></td>
-    <td><span class="file-size">${fileSize}</span></td>
-    <td><span class="file-type">${fileFormat}</span></td>
-    <td><span class="file-date">${uploadDate}</span></td>
-    <td><span class="tag-cell">${escapeHtml(tag1)}</span></td>
-    <td><span class="tag-cell">${escapeHtml(tag2)}</span></td>
-    <td><span class="tag-cell">${escapeHtml(tag3)}</span></td>
+    <td><input type="checkbox" class="ck row-checkbox" data-file-id="${upload.id}"></td>
     <td>
-      <div class="actions-cell">
-        <button class="btn btn-download btn-small" onclick="downloadFile('${escapeHtml(upload.url)}', '${escapeHtml(fileName)}')">⬇️ Download</button>
-        <button class="btn btn-info btn-small" onclick="copyToClipboard('${escapeHtml(upload.url)}')">🔗 Copiar Link</button>
+      <div class="file-cell">
+        <div class="file-icon ${iconClass}"><i class="bi ${iconName}"></i></div>
+        <div>
+          <div class="file-name-text">${escapeHtml(fileName)}</div>
+          <div class="file-size-text">${fileSize}</div>
+        </div>
+      </div>
+    </td>
+    <td class="d-none d-lg-table-cell tag-cell">${fileSize}</td>
+    <td class="tag-cell">${escapeHtml(tag1)}</td>
+    <td class="d-none d-md-table-cell"><span class="turma-chip">${escapeHtml(tag2)}</span></td>
+    <td class="d-none d-lg-table-cell tag-cell">${escapeHtml(tag3)}</td>
+    <td class="d-none d-md-table-cell date-cell">${uploadDate}</td>
+    <td>
+      <div class="row-actions">
+        <button class="row-btn" title="Download" onclick="downloadFile('${escapeHtml(upload.url)}','${escapeHtml(fileName)}')">
+          <i class="bi bi-cloud-arrow-down"></i>
+        </button>
+        <button class="row-btn copy" title="Copiar Link" onclick="copyToClipboard('${escapeHtml(upload.url)}')">
+          <i class="bi bi-link-45deg"></i>
+        </button>
       </div>
     </td>
   `;
 
-  // Add checkbox change listener
-  const checkbox = row.querySelector('.row-checkbox');
-  checkbox.addEventListener('change', updateSelectAllCheckbox);
-
+  row.querySelector('.row-checkbox').addEventListener('change', updateFloatingBar);
   return row;
 }
 
+// =====================
+// SORT
+// =====================
+function handleSort(field) {
+  document.querySelectorAll('.sort-btn').forEach(b => b.classList.remove('active', 'asc', 'desc'));
+
+  if (currentSort.field === field) {
+    currentSort.direction = currentSort.direction === 'asc' ? 'desc' : 'asc';
+  } else {
+    currentSort.field = field;
+    currentSort.direction = 'asc';
+  }
+
+  const btn = document.querySelector(`.sort-btn[data-sort="${field}"]`);
+  if (btn) btn.classList.add('active', currentSort.direction);
+
+  sortUploads();
+  renderFilteredRows();
+}
+
+function sortUploads() {
+  const { field, direction } = currentSort;
+  if (!field) return;
+
+  currentUploads.sort((a, b) => {
+    let av, bv;
+    if (field === 'date') {
+      av = new Date(a.uploadedAtISO || 0).getTime();
+      bv = new Date(b.uploadedAtISO || 0).getTime();
+    } else {
+      const map = { tag1: 'tag1', tag2: 'tag2', tag3: 'tag3' };
+      av = (a.tags?.[map[field]] || '').toLowerCase();
+      bv = (b.tags?.[map[field]] || '').toLowerCase();
+    }
+    if (av < bv) return direction === 'asc' ? -1 : 1;
+    if (av > bv) return direction === 'asc' ? 1 : -1;
+    return 0;
+  });
+}
+
+// =====================
+// SELECTION
+// =====================
+function toggleSelectAll() {
+  const checked = selectAllCheckbox.checked;
+  document.querySelectorAll('.row-checkbox').forEach(cb => cb.checked = checked);
+  updateFloatingBar();
+}
+
+function selectAllFiles() {
+  document.querySelectorAll('.row-checkbox').forEach(cb => cb.checked = true);
+  selectAllCheckbox.checked = true;
+  updateFloatingBar();
+}
+
+function selectNoneFiles() {
+  document.querySelectorAll('.row-checkbox').forEach(cb => cb.checked = false);
+  selectAllCheckbox.checked = false;
+  updateFloatingBar();
+}
+
+function updateFloatingBar() {
+  const total   = document.querySelectorAll('.row-checkbox').length;
+  const checked = document.querySelectorAll('.row-checkbox:checked').length;
+  selectAllCheckbox.checked = total > 0 && total === checked;
+  selectedCount.textContent = checked;
+
+  if (checked > 0) {
+    floatingBar.classList.add('show');
+  } else {
+    floatingBar.classList.remove('show');
+  }
+}
+
+function getSelectedFiles() {
+  const selected = [];
+  document.querySelectorAll('.row-checkbox:checked').forEach(cb => {
+    const upload = currentUploads.find(u => u.id === cb.dataset.fileId);
+    if (upload) selected.push(upload);
+  });
+  return selected;
+}
+
+// =====================
+// ACTIONS
+// =====================
 function downloadFile(url, fileName) {
   const a = document.createElement('a');
   a.href = url;
@@ -220,367 +347,194 @@ function downloadFile(url, fileName) {
 }
 
 function copyToClipboard(url) {
-  navigator.clipboard.writeText(url).then(() => {
-    showError('✓ Link copiado para a área de transferência!');
-    setTimeout(hideError, 2000);
-  }).catch(err => {
-    showError('❌ Erro ao copiar link');
-    console.error('Erro:', err);
-  });
+  navigator.clipboard.writeText(url)
+    .then(() => showToast('✓ Link copiado!'))
+    .catch(() => showToast('❌ Erro ao copiar'));
 }
 
+// =====================
+// ZIP DOWNLOAD
+// =====================
+function openDownloadModal() {
+  const selected = getSelectedFiles();
+  if (!selected.length) { showToast('⚠️ Selecione ao menos um arquivo'); return; }
+  document.getElementById('downloadCount').textContent = selected.length;
+  new bootstrap.Modal(document.getElementById('downloadModal')).show();
+}
+
+async function executeZipDownload() {
+  const selected = getSelectedFiles();
+  if (!selected.length) return;
+
+  const zipFileName = document.getElementById('zipFileName').value.trim() || 'arquivos_selecionados';
+  bootstrap.Modal.getInstance(document.getElementById('downloadModal'))?.hide();
+  showLoading('Baixando arquivos...');
+
+  try {
+    const zip = new JSZip();
+    let ok = 0, fail = 0;
+
+    for (let i = 0; i < selected.length; i++) {
+      const u = selected[i];
+      loadingText.textContent = `Baixando ${i + 1} de ${selected.length}...`;
+      try {
+        const res = await fetch(u.url, { mode: 'cors' });
+        if (!res.ok) throw new Error();
+        zip.file(u.filename, await res.blob());
+        ok++;
+      } catch { fail++; }
+    }
+
+    if (!ok) { hideLoading(); showToast('❌ Nenhum arquivo baixado'); return; }
+
+    loadingText.textContent = 'Gerando ZIP...';
+    const blob = await zip.generateAsync({ type: 'blob' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = `${zipFileName}.zip`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(a.href);
+
+    hideLoading();
+    showToast(`✓ ${zipFileName}.zip baixado!${fail ? ` (${fail} falharam)` : ''}`);
+  } catch (err) {
+    hideLoading();
+    showToast(`❌ Erro: ${err.message}`);
+  }
+}
+
+// =====================
+// PRINT
+// =====================
+function openPrintModal() {
+  const selected = getSelectedFiles();
+  if (!selected.length) { showToast('⚠️ Selecione ao menos um arquivo'); return; }
+  document.getElementById('printCount').textContent = selected.length;
+  new bootstrap.Modal(document.getElementById('printModal')).show();
+}
+
+async function executePrint() {
+  const selected = getSelectedFiles();
+  if (!selected.length) return;
+
+  bootstrap.Modal.getInstance(document.getElementById('printModal'))?.hide();
+  showLoading('Preparando impressão...');
+
+  try {
+    pdfjsLib.GlobalWorkerOptions.workerSrc =
+      'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+
+    const printWindow = window.open('', '_blank');
+    printWindow.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8">
+      <title>Impressão em Lote</title>
+      <style>
+        * { margin:0; padding:0; box-sizing:border-box; }
+        body { background:white; }
+        canvas { display:block; width:100%; height:auto; page-break-after:always; }
+        canvas:last-child { page-break-after:avoid; }
+      </style></head><body id="pb"></body></html>`);
+    printWindow.document.close();
+
+    const pb = printWindow.document.getElementById('pb');
+
+    for (let i = 0; i < selected.length; i++) {
+      const u = selected[i];
+      loadingText.textContent = `Renderizando ${i + 1} de ${selected.length}...`;
+
+      const res = await fetch(u.url);
+      const pdf = await pdfjsLib.getDocument({ data: await res.arrayBuffer() }).promise;
+
+      for (let p = 1; p <= pdf.numPages; p++) {
+        const page     = await pdf.getPage(p);
+        const viewport = page.getViewport({ scale: 2 });
+        const canvas   = printWindow.document.createElement('canvas');
+        canvas.width   = viewport.width;
+        canvas.height  = viewport.height;
+        await page.render({ canvasContext: canvas.getContext('2d'), viewport }).promise;
+        pb.appendChild(canvas);
+      }
+    }
+
+    hideLoading();
+    showToast(`✓ Abrindo ${selected.length} arquivo(s) para impressão...`);
+    setTimeout(() => printWindow.print(), 500);
+
+  } catch (err) {
+    hideLoading();
+    showToast(`❌ Erro na impressão: ${err.message}`);
+    console.error(err);
+  }
+}
+
+// =====================
+// CLEAR
+// =====================
 function clearFilters() {
-  projetoSelect.value = '';
+  projetoSelect.value = 'cetep';
   tag1Input.value = '';
   tag2Input.value = '';
   tag3Input.value = '';
   limit10Checkbox.checked = true;
-  currentSort = { field: null, direction: 'asc' };
+  currentSort = { field: 'date', direction: 'desc' };
+  quickSearchBar.value = '';
 
-  // Reset to current month
   const now = new Date();
-  const year = now.getFullYear();
-  const month = String(now.getMonth() + 1).padStart(2, '0');
-  mesInput.value = `${year}-${month}`;
+  mesInput.value = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
 
-  // Reset sort column styles
-  document.querySelectorAll('th.sortable').forEach(th => {
-    th.classList.remove('asc', 'desc');
-  });
+  document.querySelectorAll('.sort-btn').forEach(b => b.classList.remove('active', 'asc', 'desc'));
+  document.querySelector('.sort-btn[data-sort="date"]')?.classList.add('active');
 
-  filesList.innerHTML = '';
-  filesTable.style.display = 'none';
-  tableControls.style.display = 'none';
-  btnDownloadZip.style.display = 'none';
-  noResultsDiv.style.display = 'none';
-  errorDiv.style.display = 'none';
-  resultCount.textContent = '0 arquivos encontrados';
   currentUploads = [];
+  filesList.innerHTML = '';
+  resultsArea.style.display = 'none';
+  noResultsDiv.style.display = 'none';
+  floatingBar.classList.remove('show');
 }
 
-function showLoading() {
-  loadingDiv.style.display = 'flex';
-  filesTable.style.display = 'none';
+// =====================
+// UI HELPERS
+// =====================
+function showLoading(msg = 'Carregando...') {
+  loadingText.textContent = msg;
+  loadingDiv.style.display  = 'flex';
+  resultsArea.style.display = 'none';
   noResultsDiv.style.display = 'none';
-  errorDiv.style.display = 'none';
 }
 
 function hideLoading() {
   loadingDiv.style.display = 'none';
 }
 
-function showError(message) {
-  errorDiv.textContent = message;
-  errorDiv.style.display = 'block';
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.style.display = 'block';
+  clearTimeout(t._timer);
+  t._timer = setTimeout(() => { t.style.display = 'none'; }, 3000);
 }
 
-function hideError() {
-  errorDiv.style.display = 'none';
-}
-
-// Utility Functions
+// =====================
+// UTILS
+// =====================
 function formatFileSize(bytes) {
-  if (bytes === 0) return '0 B';
-  const k = 1024;
-  const sizes = ['B', 'KB', 'MB', 'GB'];
+  if (!bytes) return '0 B';
+  const k = 1024, s = ['B','KB','MB','GB'];
   const i = Math.floor(Math.log(bytes) / Math.log(k));
-  return Math.round((bytes / Math.pow(k, i)) * 100) / 100 + ' ' + sizes[i];
+  return (bytes / Math.pow(k, i)).toFixed(2) + ' ' + s[i];
 }
 
-function formatDate(isoString) {
-  if (!isoString) return 'N/A';
-  const date = new Date(isoString);
-  return date.toLocaleDateString('pt-BR', {
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit',
+function formatDate(iso) {
+  if (!iso) return 'N/A';
+  return new Date(iso).toLocaleDateString('pt-BR', {
+    year: 'numeric', month: '2-digit', day: '2-digit',
+    hour: '2-digit', minute: '2-digit',
   });
 }
 
 function escapeHtml(text) {
-  const div = document.createElement('div');
-  div.textContent = text;
-  return div.innerHTML;
-}
-
-function getSelectedFiles() {
-  const checkboxes = document.querySelectorAll('.row-checkbox:checked');
-  const selected = [];
-  checkboxes.forEach(checkbox => {
-    const fileId = checkbox.dataset.fileId;
-    const upload = currentUploads.find(u => u.id === fileId);
-    if (upload) {
-      selected.push(upload);
-    }
-  });
-  return selected;
-}
-
-function selectAllFiles() {
-  document.querySelectorAll('.row-checkbox').forEach(checkbox => {
-    checkbox.checked = true;
-  });
-  selectAllCheckbox.checked = true;
-}
-
-function selectNoneFiles() {
-  document.querySelectorAll('.row-checkbox').forEach(checkbox => {
-    checkbox.checked = false;
-  });
-  selectAllCheckbox.checked = false;
-}
-
-function toggleSelectAll() {
-  const checked = selectAllCheckbox.checked;
-  document.querySelectorAll('.row-checkbox').forEach(checkbox => {
-    checkbox.checked = checked;
-  });
-}
-
-function updateSelectAllCheckbox() {
-  const total = document.querySelectorAll('.row-checkbox').length;
-  const checked = document.querySelectorAll('.row-checkbox:checked').length;
-  selectAllCheckbox.checked = total > 0 && total === checked;
-}
-
-function openDownloadModal() {
-  const selected = getSelectedFiles();
-  if (selected.length === 0) {
-    showError('⚠️ Selecione pelo menos um arquivo para fazer download');
-    return;
-  }
-
-  document.getElementById('downloadCount').textContent = selected.length;
-  downloadModal.classList.add('show');
-}
-
-function closeDownloadModal() {
-  downloadModal.classList.remove('show');
-}
-
-async function executeZipDownload() {
-  const selected = getSelectedFiles();
-  if (selected.length === 0) {
-    showError('⚠️ Nenhum arquivo selecionado');
-    return;
-  }
-
-  const zipFileName = document.getElementById('zipFileName').value.trim() || 'arquivos_selecionados';
-  closeDownloadModal();
-  showLoading();
-
-  try {
-    const zip = new JSZip();
-    let successCount = 0;
-    let failCount = 0;
-
-    // Fetch all files
-    for (let i = 0; i < selected.length; i++) {
-      const upload = selected[i];
-      document.querySelector('.loading p').textContent = `Baixando arquivo ${i + 1} de ${selected.length}...`;
-
-      try {
-        const response = await fetch(upload.url, { mode: 'cors' });
-        if (!response.ok) throw new Error(`HTTP ${response.status}`);
-
-        const blob = await response.blob();
-        zip.file(upload.filename, blob);
-        successCount++;
-      } catch (error) {
-        console.error(`Erro ao buscar ${upload.filename}:`, error);
-        failCount++;
-      }
-    }
-
-    if (successCount === 0) {
-      hideLoading();
-      showError('❌ Nenhum arquivo foi baixado. Verifique a conexão e tente novamente.');
-      return;
-    }
-
-    // Generate ZIP
-    document.querySelector('.loading p').textContent = 'Gerando arquivo ZIP...';
-    const zipBlob = await zip.generateAsync({ type: 'blob' });
-
-    // Download ZIP
-    const link = document.createElement('a');
-    link.href = URL.createObjectURL(zipBlob);
-    link.download = `${zipFileName}.zip`;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(link.href);
-
-    hideLoading();
-    let message = `✓ Download de ${zipFileName}.zip concluído! (${successCount} arquivo(s))`;
-    if (failCount > 0) {
-      message += ` - ⚠️ ${failCount} arquivo(s) falharam`;
-    }
-    showError(message);
-    setTimeout(hideError, 4000);
-  } catch (error) {
-    hideLoading();
-    showError(`❌ Erro ao criar ZIP: ${error.message}`);
-    console.error('Erro:', error);
-  }
-}
-
-function openPrintModal() {
-  const selected = getSelectedFiles();
-  if (selected.length === 0) {
-    showError('⚠️ Selecione pelo menos um arquivo para imprimir');
-    return;
-  }
-
-  document.getElementById('printCount').textContent = selected.length;
-  printModal.classList.add('show');
-}
-
-function closePrintModal() {
-  printModal.classList.remove('show');
-}
-
-async function executePrint() {
-  const selected = getSelectedFiles();
-  if (selected.length === 0) {
-    showError('⚠️ Nenhum arquivo selecionado');
-    return;
-  }
-
-  closePrintModal();
-  showLoading();
-
-  try {
-    // Configure PDF.js worker
-    pdfjsLib.GlobalWorkerOptions.workerSrc =
-      'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
-
-    // Open print window
-    const printWindow = window.open('', '_blank');
-    printWindow.document.write(`
-      <!DOCTYPE html>
-      <html lang="pt-BR">
-      <head>
-        <meta charset="UTF-8">
-        <title>Impressão em Lote</title>
-        <style>
-          * { margin: 0; padding: 0; box-sizing: border-box; }
-          body { background: white; }
-          canvas {
-            display: block;
-            width: 210mm;
-            height: auto;
-            page-break-after: always;
-          }
-          canvas:last-child { page-break-after: avoid; }
-          @media print {
-            canvas {
-              width: 100%;
-              height: auto;
-              page-break-after: always;
-            }
-          }
-        </style>
-      </head>
-      <body id="printBody"></body>
-      </html>
-    `);
-    printWindow.document.close();
-
-    const printBody = printWindow.document.getElementById('printBody');
-
-    for (let i = 0; i < selected.length; i++) {
-      const upload = selected[i];
-      document.querySelector('.loading p').textContent =
-        `Renderizando ${i + 1} de ${selected.length}: ${upload.filename}`;
-
-      const response = await fetch(upload.url);
-      const arrayBuffer = await response.arrayBuffer();
-      const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
-
-      for (let pageNum = 1; pageNum <= pdf.numPages; pageNum++) {
-        const page = await pdf.getPage(pageNum);
-        const viewport = page.getViewport({ scale: 2.0 });
-
-        const canvas = printWindow.document.createElement('canvas');
-        canvas.width = viewport.width;
-        canvas.height = viewport.height;
-
-        const ctx = canvas.getContext('2d');
-        await page.render({ canvasContext: ctx, viewport }).promise;
-
-        printBody.appendChild(canvas);
-      }
-    }
-
-    hideLoading();
-    showError(`✓ Preparando impressão de ${selected.length} arquivo(s)...`);
-    setTimeout(hideError, 4000);
-
-    // Print after canvases are painted
-    setTimeout(() => printWindow.print(), 500);
-
-  } catch (error) {
-    hideLoading();
-    showError(`❌ Erro ao preparar impressão: ${error.message}`);
-    console.error('Erro:', error);
-  }
-}
-
-function handleSort(field) {
-  const thElement = document.querySelector(`th[data-sort="${field}"]`);
-
-  // Toggle sort direction
-  if (currentSort.field === field) {
-    currentSort.direction = currentSort.direction === 'asc' ? 'desc' : 'asc';
-  } else {
-    currentSort.field = field;
-    currentSort.direction = 'asc';
-  }
-
-  // Update visual indicators
-  document.querySelectorAll('th.sortable').forEach(th => {
-    th.classList.remove('asc', 'desc');
-  });
-
-  thElement.classList.add(currentSort.direction);
-
-  // Sort the data
-  sortUploads();
-  displayResults();
-}
-
-function sortUploads() {
-  if (!currentSort.field) return;
-
-  currentUploads.sort((a, b) => {
-    let aVal, bVal;
-
-    switch (currentSort.field) {
-      case 'date':
-        aVal = new Date(a.uploadedAtISO || 0).getTime();
-        bVal = new Date(b.uploadedAtISO || 0).getTime();
-        break;
-      case 'tag1':
-        aVal = (a.tags?.tag1 || '').toLowerCase();
-        bVal = (b.tags?.tag1 || '').toLowerCase();
-        break;
-      case 'tag2':
-        aVal = (a.tags?.tag2 || '').toLowerCase();
-        bVal = (b.tags?.tag2 || '').toLowerCase();
-        break;
-      case 'tag3':
-        aVal = (a.tags?.tag3 || '').toLowerCase();
-        bVal = (b.tags?.tag3 || '').toLowerCase();
-        break;
-      default:
-        return 0;
-    }
-
-    if (aVal < bVal) return currentSort.direction === 'asc' ? -1 : 1;
-    if (aVal > bVal) return currentSort.direction === 'asc' ? 1 : -1;
-    return 0;
-  });
+  const d = document.createElement('div');
+  d.textContent = String(text ?? '');
+  return d.innerHTML;
 }
